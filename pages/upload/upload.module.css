@@ -1,0 +1,239 @@
+.wrap { min-height: 100vh; background: var(--bg); }
+
+/* ── HEADER ── */
+.header {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 0 2rem;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.headerInner {
+  max-width: 900px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  height: 64px;
+}
+.logo { display: flex; align-items: center; gap: 10px; }
+.logoMark { font-size: 22px; }
+.logoText {
+  font-family: 'Syne', sans-serif;
+  font-weight: 800;
+  font-size: 18px;
+  color: var(--accent);
+  letter-spacing: -0.02em;
+}
+.tournInfo { margin-left: auto; text-align: right; }
+.tournName {
+  font-family: 'Syne', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+.tournSub { font-size: 11px; color: var(--muted); font-family: 'DM Mono', monospace; }
+
+/* ── CONTAINER ── */
+.container { max-width: 900px; margin: 0 auto; padding: 2rem 1.5rem; }
+
+/* ── INSTRUCTIONS ── */
+.instructCard {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+.instructTitle {
+  font-family: 'Syne', sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  color: var(--text);
+}
+.instructGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.instructSlot {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px;
+  text-align: center;
+  transition: border-color 0.2s;
+}
+.instructIcon { font-size: 22px; margin-bottom: 6px; }
+.instructLabel { font-family: 'Syne', sans-serif; font-size: 12px; font-weight: 600; margin-bottom: 4px; }
+.instructSize { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--muted); margin-bottom: 3px; }
+.instructAccepts { font-size: 11px; color: var(--muted); }
+.instructNote {
+  font-size: 12px;
+  color: var(--muted);
+  padding: 10px 14px;
+  background: var(--surface2);
+  border-radius: var(--radius);
+  border-left: 3px solid var(--accent2);
+}
+
+/* ── DROP ZONE ── */
+.dropzone {
+  border: 2px dashed var(--border2);
+  border-radius: var(--radius-lg);
+  padding: 3.5rem 2rem;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+  margin-bottom: 1.5rem;
+  background: var(--surface);
+}
+.dropzone:hover { border-color: var(--accent); background: rgba(200,240,96,0.03); }
+.dragging { border-color: var(--accent) !important; background: rgba(200,240,96,0.06) !important; }
+.uploadingZone { cursor: default; }
+.dzIcon { font-size: 36px; margin-bottom: 12px; opacity: 0.5; }
+.dzLabel { font-size: 15px; color: var(--text); line-height: 1.6; margin-bottom: 6px; }
+.dzLabel strong { color: var(--accent); }
+.dzSub { font-size: 12px; color: var(--muted); font-family: 'DM Mono', monospace; }
+.dzUploading { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+
+/* ── SPINNER ── */
+.spinner {
+  width: 28px; height: 28px;
+  border: 3px solid var(--border2);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── PROGRESS ── */
+.progressList {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1rem 1.25rem;
+  margin-bottom: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.progressItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  font-family: 'DM Mono', monospace;
+}
+.progressIcon { font-size: 14px; flex-shrink: 0; width: 20px; text-align: center; }
+.progressName { color: var(--text); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.progressAssigned { color: var(--accent); font-size: 12px; white-space: nowrap; }
+.progressError { color: var(--danger); font-size: 12px; }
+.pending .progressName   { color: var(--muted); }
+.uploading .progressName { color: var(--accent2); }
+.done .progressName      { color: var(--text); }
+.error .progressName     { color: var(--danger); }
+
+/* ── SLOT SECTIONS ── */
+.slotSection { margin-bottom: 1.5rem; }
+.slotHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-family: 'Syne', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+.slotCount {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  color: var(--muted);
+  font-weight: 400;
+}
+
+/* ── FILE GRID ── */
+.fileGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 10px;
+}
+.fileCard {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transition: border-color 0.2s;
+  position: relative;
+}
+.fileThumb {
+  width: 100%;
+  aspect-ratio: 16/9;
+  background: var(--surface2);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.thumbImg { width: 100%; height: 100%; object-fit: cover; }
+.videoThumb { font-size: 32px; opacity: 0.5; }
+.fileInfo { padding: 12px 14px; flex: 1; }
+.fileName { font-family: 'DM Mono', monospace; font-size: 15px; font-weight: 500; margin-bottom: 3px; }
+.fileOrig { font-size: 11px; color: var(--muted); margin-bottom: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fileMeta { font-size: 11px; color: var(--border2); font-family: 'DM Mono', monospace; }
+.deleteBtn {
+  position: absolute;
+  top: 8px; right: 8px;
+  width: 28px; height: 28px;
+  background: rgba(13,15,18,0.8);
+  border: 1px solid var(--border2);
+  border-radius: 50%;
+  color: var(--danger);
+  font-size: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.15s;
+  backdrop-filter: blur(4px);
+}
+.fileCard:hover .deleteBtn { opacity: 1; }
+.deleteBtn:hover { background: rgba(240,112,112,0.2); border-color: var(--danger); }
+
+/* ── EMPTY STATE ── */
+.emptyState { text-align: center; padding: 4rem 2rem; }
+.emptyIcon { font-size: 48px; margin-bottom: 12px; opacity: 0.3; }
+.emptyText { font-family: 'Syne', sans-serif; font-size: 18px; font-weight: 600; color: var(--muted); margin-bottom: 6px; }
+.emptySub { font-size: 13px; color: var(--border2); }
+
+/* ── CENTER WRAP ── */
+.centerWrap {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  text-align: center;
+  padding: 2rem;
+}
+.loadingText { color: var(--muted); font-size: 14px; }
+.notFoundIcon { font-size: 48px; margin-bottom: 8px; }
+.notFoundTitle { font-family: 'Syne', sans-serif; font-size: 22px; font-weight: 700; color: var(--text); }
+.notFoundSub { font-size: 14px; color: var(--muted); max-width: 380px; }
+
+/* ── FOOTER ── */
+.footer {
+  text-align: center;
+  font-size: 12px;
+  color: var(--border2);
+  padding: 2rem 0 1rem;
+  font-family: 'DM Mono', monospace;
+}
+.footer strong { color: var(--muted); }

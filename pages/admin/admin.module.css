@@ -1,0 +1,298 @@
+.loginWrap {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg);
+}
+.loginCard {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 3rem 2.5rem;
+  width: 100%;
+  max-width: 400px;
+  text-align: center;
+}
+.loginLogo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+.logoMark { font-size: 24px; }
+.logoText {
+  font-family: 'Syne', sans-serif;
+  font-weight: 800;
+  font-size: 22px;
+  color: var(--accent);
+  letter-spacing: -0.02em;
+}
+.loginSub {
+  font-size: 13px;
+  color: var(--muted);
+  margin-bottom: 2rem;
+}
+.loginForm { display: flex; flex-direction: column; gap: 12px; }
+.loginInput {
+  width: 100%;
+  height: 44px;
+  border: 1px solid var(--border2);
+  border-radius: var(--radius);
+  padding: 0 14px;
+  font-size: 15px;
+  background: var(--surface2);
+  color: var(--text);
+  font-family: 'DM Sans', sans-serif;
+  text-align: center;
+  letter-spacing: 0.1em;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.loginInput:focus { border-color: var(--accent); }
+.authError { font-size: 13px; color: var(--danger); }
+.loginBtn {
+  height: 44px;
+  background: var(--accent);
+  color: #0d0f12;
+  border: none;
+  border-radius: var(--radius);
+  font-size: 14px;
+  font-weight: 700;
+  font-family: 'Syne', sans-serif;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.loginBtn:hover { background: #b5da50; }
+
+/* ── ADMIN LAYOUT ── */
+.wrap { min-height: 100vh; }
+.header {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 0 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 58px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.headerLeft { display: flex; align-items: center; gap: 12px; }
+.headerSub { font-size: 12px; color: var(--muted); font-family: 'DM Mono', monospace; }
+.logoutBtn {
+  background: none;
+  border: 1px solid var(--border2);
+  border-radius: var(--radius);
+  padding: 6px 14px;
+  font-size: 13px;
+  color: var(--muted);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.logoutBtn:hover { color: var(--text); border-color: var(--muted); }
+
+.container { max-width: 1000px; margin: 0 auto; padding: 2rem 1.5rem; }
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1.5rem;
+}
+.cardTitle {
+  font-family: 'Syne', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 14px;
+  color: var(--accent);
+}
+
+.createForm {}
+.formRow {
+  display: flex;
+  gap: 10px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+.field { display: flex; flex-direction: column; gap: 5px; flex: 1; min-width: 180px; }
+.field label { font-size: 12px; color: var(--muted); }
+.input {
+  height: 38px;
+  border: 1px solid var(--border2);
+  border-radius: var(--radius);
+  padding: 0 12px;
+  font-size: 14px;
+  background: var(--surface2);
+  color: var(--text);
+  font-family: 'DM Sans', sans-serif;
+  outline: none;
+  transition: border-color 0.15s;
+  width: 100%;
+}
+.input:focus { border-color: var(--accent); }
+
+.btnAccent {
+  height: 38px;
+  padding: 0 20px;
+  background: var(--accent);
+  color: #0d0f12;
+  border: none;
+  border-radius: var(--radius);
+  font-size: 13px;
+  font-weight: 700;
+  font-family: 'Syne', sans-serif;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+.btnAccent:hover:not(:disabled) { background: #b5da50; }
+.btnAccent:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.sectionLabel {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 12px;
+}
+
+.loading { color: var(--muted); font-size: 14px; padding: 2rem 0; text-align: center; }
+.empty { color: var(--muted); font-size: 14px; padding: 3rem 0; text-align: center; }
+
+/* ── TOURNAMENT CARD ── */
+.tournCard {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 12px;
+  transition: border-color 0.15s;
+}
+.tournCard:hover { border-color: var(--border2); }
+
+.tournTop {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+.tournName {
+  font-family: 'Syne', sans-serif;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 3px;
+}
+.tournNotes { font-size: 13px; color: var(--muted); margin-bottom: 3px; }
+.tournMeta { font-size: 11px; color: var(--border2); font-family: 'DM Mono', monospace; }
+
+.tournActions { display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-start; }
+
+.copyBtn {
+  height: 34px;
+  padding: 0 14px;
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius);
+  font-size: 12px;
+  color: var(--accent2);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s;
+  font-family: 'DM Mono', monospace;
+}
+.copyBtn:hover { border-color: var(--accent2); }
+
+.btnDanger {
+  height: 34px;
+  padding: 0 14px;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 12px;
+  color: var(--danger);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.btnDanger:hover { background: rgba(240,112,112,0.08); border-color: var(--danger); }
+
+/* ── SLOTS ── */
+.slotRow {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+.slot {
+  flex: 1;
+  min-width: 70px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  text-align: center;
+  transition: border-color 0.2s;
+}
+.slotTotal {
+  flex: 1;
+  min-width: 70px;
+  background: rgba(200,240,96,0.05);
+  border: 1px solid rgba(200,240,96,0.15);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  text-align: center;
+}
+.slotCount {
+  font-family: 'Syne', sans-serif;
+  font-size: 22px;
+  font-weight: 700;
+}
+.slotLabel { font-size: 10px; color: var(--muted); font-family: 'DM Mono', monospace; letter-spacing: 0.08em; margin-top: 2px; }
+
+/* ── EXPORT ROW ── */
+.exportRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+.exportLabel { font-size: 11px; color: var(--muted); font-family: 'DM Mono', monospace; }
+.btnExport {
+  height: 32px;
+  padding: 0 14px;
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius);
+  font-size: 12px;
+  color: var(--text);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s;
+  font-family: 'DM Mono', monospace;
+}
+.btnExport:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+.btnExport:disabled { opacity: 0.4; cursor: not-allowed; }
+.btnAccentSm {
+  height: 32px;
+  padding: 0 16px;
+  background: var(--accent);
+  color: #0d0f12;
+  border: none;
+  border-radius: var(--radius);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+.btnAccentSm:hover:not(:disabled) { background: #b5da50; }
+.btnAccentSm:disabled { opacity: 0.4; cursor: not-allowed; }
