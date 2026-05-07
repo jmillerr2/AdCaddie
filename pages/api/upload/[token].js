@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
-import { detectSequenceType, assignName } from '../../lib/generator'
+import { detectSequenceType, assignName } from '../../../lib/generator'
 
 // Use service role for server-side uploads
 const supabase = createClient(
