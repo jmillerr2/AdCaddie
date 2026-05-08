@@ -83,19 +83,20 @@ export default function UploadPortal() {
         const ext = file.name.split('.').pop().toLowerCase()
         const isVid = ext === 'wmv'
 
-        // Read dimensions client-side
-        let width = 0, height = 0
+        // Read dimensions (and duration for videos) client-side
+        let width = 0, height = 0, duration = null
         if (isVid) {
           const dims = await getVideoDimensions(file).catch(() => null)
-          if (dims) { width = dims.width; height = dims.height }
+          if (dims) { width = dims.width; height = dims.height; duration = dims.duration }
         } else {
           const dims = await getImageDimensions(file).catch(() => null)
           if (dims) { width = dims.width; height = dims.height }
         }
 
         // Step 1: validate + get signed upload URL from server
+        const durParam = duration != null ? `&duration=${duration}` : ''
         const signRes = await fetch(
-          `/api/upload/${token}?filename=${encodeURIComponent(file.name)}&width=${width}&height=${height}&size=${file.size}`
+          `/api/upload/${token}?filename=${encodeURIComponent(file.name)}&width=${width}&height=${height}&size=${file.size}${durParam}`
         )
         let signJson = {}
         try { signJson = await signRes.json() } catch {
@@ -171,7 +172,7 @@ export default function UploadPortal() {
       const url = URL.createObjectURL(file)
       const video = document.createElement('video')
       video.onloadedmetadata = () => {
-        resolve({ width: video.videoWidth, height: video.videoHeight })
+        resolve({ width: video.videoWidth, height: video.videoHeight, duration: video.duration })
         URL.revokeObjectURL(url)
       }
       video.onerror = reject

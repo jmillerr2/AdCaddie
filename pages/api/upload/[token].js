@@ -13,7 +13,7 @@ export default async function handler(req, res) {
 
   // ── GET: validate file + return signed upload URL ──────────────────────────
   if (req.method === 'GET') {
-    const { filename, width, height, size } = req.query
+    const { filename, width, height, size, duration } = req.query
     if (!filename) return res.status(400).json({ error: 'Missing filename' })
 
     const { data: tournament, error: tErr } = await supabase
@@ -57,7 +57,8 @@ export default async function handler(req, res) {
       .eq('tournament_id', tournament.id)
       .eq('sequence_type', sequenceType)
 
-    const assignedName = assignName(sequenceType, count || 0)
+    const durationSec  = isVideo && duration ? parseFloat(duration) : null
+    const assignedName = assignName(sequenceType, count || 0, durationSec)
     const filePath = `${tournament.id}/${assignedName}.${ext}`
 
     const { data: signData, error: signErr } = await supabase.storage
