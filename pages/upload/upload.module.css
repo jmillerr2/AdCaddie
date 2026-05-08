@@ -473,6 +473,50 @@
 .videoProgressName { color: var(--text); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .videoProgressOk   { color: var(--accent); font-size: 12px; white-space: nowrap; }
 .videoProgressErr  { color: var(--danger); font-size: 12px; }
+.videoItemList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 12px;
+  margin-bottom: 12px;
+}
+.videoItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 8px 12px;
+  font-size: 13px;
+}
+.videoItemName {
+  flex: 1;
+  font-family: 'DM Mono', monospace;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.videoRemoveBtn {
+  width: 26px;
+  height: 26px;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: none;
+  color: var(--muted);
+  font-size: 11px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.15s;
+}
+.videoRemoveBtn:hover { background: #fef2f2; border-color: var(--danger); color: var(--danger); }
+.videoItemStatus { font-size: 12px; color: var(--accent2); white-space: nowrap; font-family: 'DM Mono', monospace; }
+.videoItemDone   { font-size: 12px; color: var(--accent);  white-space: nowrap; font-family: 'DM Mono', monospace; font-weight: 600; }
+.videoItemErr    { font-size: 12px; color: var(--danger);  white-space: nowrap; font-family: 'DM Mono', monospace; }
 
 /* ── FOOTER ── */
 .footer {

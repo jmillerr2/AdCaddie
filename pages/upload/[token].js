@@ -39,10 +39,8 @@ export default function UploadPortal() {
   const [completingLoading, setCompletingLoading] = useState(false)
   const fileRef = useRef()
   const videoFileRef = useRef()
-  const [videoFile, setVideoFile] = useState(null)
-  const [videoDuration, setVideoDuration] = useState('')
+  const [videoItems, setVideoItems] = useState([])
   const [videoUploading, setVideoUploading] = useState(false)
-  const [videoProgress, setVideoProgress] = useState(null)
 
   useEffect(() => {
     if (token) loadTournament()
@@ -155,57 +153,72 @@ export default function UploadPortal() {
     setTimeout(() => setUploadProgress([]), 6000)
   }
 
+  function addVideoFiles(files) {
+    if (!files || !files.length) return
+    const next = Array.from(files).map(f => ({ file: f, duration: '', status: 'pending', assignedName: null, message: '' }))
+    setVideoItems(prev => [...prev, ...next])
+    if (videoFileRef.current) videoFileRef.current.value = ''
+  }
+
+  function updateVideoDuration(index, value) {
+    setVideoItems(prev => prev.map((it, i) => i === index ? { ...it, duration: value } : it))
+  }
+
+  function removeVideoItem(index) {
+    setVideoItems(prev => prev.filter((_, i) => i !== index))
+  }
+
   async function handleVideoUpload() {
-    if (!videoFile || !videoDuration) return
-    const duration = parseInt(videoDuration)
-    if (!duration || duration < 1) return
+    if (videoUploading) return
     setVideoUploading(true)
-    setVideoProgress({ status: 'uploading' })
-    try {
-      const signRes = await fetch(
-        `/api/upload/${token}?filename=${encodeURIComponent(videoFile.name)}&width=960&height=540&size=${videoFile.size}&duration=${duration}`
-      )
-      const signJson = await signRes.json()
-      if (!signRes.ok) {
-        setVideoProgress({ status: 'error', message: signJson.error })
-        setVideoUploading(false)
-        return
-      }
-      const { assignedName, filePath, sequenceType, uploadToken: signedToken, isLate, tournamentId } = signJson
-      const { error: storageErr } = await supabase.storage
-        .from('ads')
-        .uploadToSignedUrl(filePath, signedToken, videoFile, { contentType: 'video/x-ms-wmv' })
-      if (storageErr) {
-        setVideoProgress({ status: 'error', message: storageErr.message })
-        setVideoUploading(false)
-        return
-      }
-      const regRes = await fetch(`/api/upload/${token}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          assignedName, filePath, sequenceType,
-          originalFilename: videoFile.name,
-          width: 960, height: 540,
-          isVideo: true,
-          sizeBytes: videoFile.size,
-          isLate,
-          tournamentId,
+
+    for (let idx = 0; idx < videoItems.length; idx++) {
+      const item = videoItems[idx]
+      if (item.status !== 'pending') continue
+      const duration = parseInt(item.duration)
+      if (!duration || duration < 1) continue
+
+      setVideoItems(prev => prev.map((it, i) => i === idx ? { ...it, status: 'uploading' } : it))
+
+      try {
+        const signRes = await fetch(
+          `/api/upload/${token}?filename=${encodeURIComponent(item.file.name)}&width=960&height=540&size=${item.file.size}&duration=${duration}`
+        )
+        const signJson = await signRes.json()
+        if (!signRes.ok) throw new Error(signJson.error)
+
+        const { assignedName, filePath, sequenceType, uploadToken: signedToken, isLate, tournamentId } = signJson
+
+        const { error: storageErr } = await supabase.storage
+          .from('ads')
+          .uploadToSignedUrl(filePath, signedToken, item.file, { contentType: 'video/x-ms-wmv' })
+        if (storageErr) throw new Error(storageErr.message)
+
+        const regRes = await fetch(`/api/upload/${token}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            assignedName, filePath, sequenceType,
+            originalFilename: item.file.name,
+            width: 960, height: 540,
+            isVideo: true,
+            sizeBytes: item.file.size,
+            isLate,
+            tournamentId,
+          })
         })
-      })
-      const regJson = await regRes.json()
-      if (!regRes.ok) {
-        setVideoProgress({ status: 'error', message: regJson.error })
-      } else {
-        setVideoProgress({ status: 'done', upload: regJson.upload })
-        setVideoFile(null)
-        setVideoDuration('')
-        await loadTournament()
+        const regJson = await regRes.json()
+        if (!regRes.ok) throw new Error(regJson.error)
+
+        setVideoItems(prev => prev.map((it, i) => i === idx ? { ...it, status: 'done', assignedName: regJson.upload.assigned_name } : it))
+      } catch (err) {
+        setVideoItems(prev => prev.map((it, i) => i === idx ? { ...it, status: 'error', message: err.message } : it))
       }
-    } catch (err) {
-      setVideoProgress({ status: 'error', message: err.message })
     }
+
     setVideoUploading(false)
+    await loadTournament()
+    setTimeout(() => setVideoItems(prev => prev.filter(it => it.status === 'error')), 4000)
   }
 
   function getImageDimensions(file) {
@@ -426,54 +439,65 @@ export default function UploadPortal() {
 
         {/* Video upload section */}
         <div className={styles.videoSection}>
-          <div className={styles.videoSectionTitle}>Video Ad (.wmv)</div>
-          <div className={styles.videoUploadRow}>
-            <input
-              ref={videoFileRef}
-              type="file"
-              accept=".wmv"
-              style={{ display: 'none' }}
-              onChange={e => { setVideoFile(e.target.files[0] || null); setVideoProgress(null) }}
-            />
-            <button
-              className={styles.videoChooseBtn}
-              onClick={() => videoFileRef.current?.click()}
-              disabled={videoUploading}
-            >
-              {videoFile ? videoFile.name : 'Choose .wmv file…'}
-            </button>
-            <input
-              type="number"
-              className={styles.videoDurInput}
-              placeholder="Duration (sec)"
-              min="1"
-              max="999"
-              value={videoDuration}
-              onChange={e => setVideoDuration(e.target.value)}
-              disabled={videoUploading}
-            />
-            <button
-              className={styles.videoUploadBtn}
-              onClick={handleVideoUpload}
-              disabled={!videoFile || !videoDuration || videoUploading}
-            >
-              {videoUploading ? 'Uploading…' : 'Upload Video'}
-            </button>
-          </div>
-          {videoProgress && (
-            <div className={styles.videoProgress}>
-              <span>
-                {videoProgress.status === 'uploading' ? '⏫' : videoProgress.status === 'done' ? '✓' : '✗'}
-              </span>
-              <span className={styles.videoProgressName}>{videoFile?.name || ''}</span>
-              {videoProgress.status === 'done' && videoProgress.upload &&
-                <span className={styles.videoProgressOk}>→ {videoProgress.upload.assigned_name} ({videoProgress.upload.sequence_type})</span>
-              }
-              {videoProgress.status === 'error' &&
-                <span className={styles.videoProgressErr}>{videoProgress.message}</span>
-              }
+          <div className={styles.videoSectionTitle}>Video Ads (.wmv)</div>
+          <input
+            ref={videoFileRef}
+            type="file"
+            accept=".wmv"
+            multiple
+            style={{ display: 'none' }}
+            onChange={e => addVideoFiles(e.target.files)}
+          />
+          <button
+            className={styles.videoChooseBtn}
+            onClick={() => videoFileRef.current?.click()}
+            disabled={videoUploading}
+          >
+            + Choose .wmv files…
+          </button>
+
+          {videoItems.length > 0 && (
+            <div className={styles.videoItemList}>
+              {videoItems.map((item, i) => (
+                <div key={i} className={styles.videoItem}>
+                  <span className={styles.videoItemName}>{item.file.name}</span>
+                  {item.status === 'pending' && (
+                    <>
+                      <input
+                        type="number"
+                        className={styles.videoDurInput}
+                        placeholder="Seconds"
+                        min="1"
+                        max="999"
+                        value={item.duration}
+                        onChange={e => updateVideoDuration(i, e.target.value)}
+                      />
+                      <button className={styles.videoRemoveBtn} onClick={() => removeVideoItem(i)}>✕</button>
+                    </>
+                  )}
+                  {item.status === 'uploading' && <span className={styles.videoItemStatus}>⏫ Uploading…</span>}
+                  {item.status === 'done' && <span className={styles.videoItemDone}>✓ {item.assignedName}</span>}
+                  {item.status === 'error' && <span className={styles.videoItemErr}>✗ {item.message}</span>}
+                </div>
+              ))}
             </div>
           )}
+
+          {videoItems.some(it => it.status === 'pending') && (() => {
+            const pending = videoItems.filter(it => it.status === 'pending')
+            const allSet  = pending.every(it => parseInt(it.duration) >= 1)
+            return (
+              <button
+                className={styles.videoUploadBtn}
+                onClick={handleVideoUpload}
+                disabled={!allSet || videoUploading}
+              >
+                {videoUploading
+                  ? 'Uploading…'
+                  : `Upload ${pending.length} Video${pending.length !== 1 ? 's' : ''}`}
+              </button>
+            )
+          })()}
         </div>
 
         {/* Uploaded files by slot */}

@@ -21,10 +21,8 @@ export default function LpgaAds() {
   const [downloading, setDownloading] = useState(false)
   const fileRef = useRef()
   const videoFileRef = useRef()
-  const [videoFile, setVideoFile] = useState(null)
-  const [videoDuration, setVideoDuration] = useState('')
+  const [videoItems, setVideoItems] = useState([])
   const [videoUploading, setVideoUploading] = useState(false)
-  const [videoProgress, setVideoProgress] = useState(null)
 
   useEffect(() => {
     const saved = sessionStorage.getItem('ac_admin')
@@ -94,32 +92,52 @@ export default function LpgaAds() {
     setTimeout(() => setProgress([]), 5000)
   }
 
+  function addVideoFiles(files) {
+    if (!files || !files.length) return
+    const next = Array.from(files).map(f => ({ file: f, duration: '', status: 'pending', assignedName: null, message: '' }))
+    setVideoItems(prev => [...prev, ...next])
+    if (videoFileRef.current) videoFileRef.current.value = ''
+  }
+
+  function updateVideoDuration(index, value) {
+    setVideoItems(prev => prev.map((it, i) => i === index ? { ...it, duration: value } : it))
+  }
+
+  function removeVideoItem(index) {
+    setVideoItems(prev => prev.filter((_, i) => i !== index))
+  }
+
   async function handleVideoUpload() {
-    if (!videoFile || !videoDuration) return
-    const duration = parseInt(videoDuration)
-    if (!duration || duration < 1) return
+    if (videoUploading) return
     setVideoUploading(true)
-    setVideoProgress({ status: 'uploading' })
-    try {
-      const formData = new FormData()
-      formData.append('file', videoFile)
-      const res = await fetch(`/api/lpga/upload?duration=${duration}&width=960&height=540`, {
-        method: 'POST',
-        body: formData
-      })
-      const json = await res.json()
-      if (!res.ok) {
-        setVideoProgress({ status: 'error', message: json.error })
-      } else {
-        setVideoProgress({ status: 'done', ad: json.ad })
-        setVideoFile(null)
-        setVideoDuration('')
-        await loadAds()
+
+    for (let idx = 0; idx < videoItems.length; idx++) {
+      const item = videoItems[idx]
+      if (item.status !== 'pending') continue
+      const duration = parseInt(item.duration)
+      if (!duration || duration < 1) continue
+
+      setVideoItems(prev => prev.map((it, i) => i === idx ? { ...it, status: 'uploading' } : it))
+
+      try {
+        const formData = new FormData()
+        formData.append('file', item.file)
+        const res = await fetch(`/api/lpga/upload?duration=${duration}&width=960&height=540`, {
+          method: 'POST',
+          body: formData
+        })
+        const json = await res.json()
+        if (!res.ok) throw new Error(json.error)
+
+        setVideoItems(prev => prev.map((it, i) => i === idx ? { ...it, status: 'done', assignedName: json.ad.assigned_name } : it))
+      } catch (err) {
+        setVideoItems(prev => prev.map((it, i) => i === idx ? { ...it, status: 'error', message: err.message } : it))
       }
-    } catch (err) {
-      setVideoProgress({ status: 'error', message: err.message })
     }
+
     setVideoUploading(false)
+    await loadAds()
+    setTimeout(() => setVideoItems(prev => prev.filter(it => it.status === 'error')), 4000)
   }
 
   function triggerDownload(blobUrl, filename) {
@@ -301,54 +319,65 @@ export default function LpgaAds() {
           )}
 
           <div className={styles.videoSection}>
-            <div className={styles.videoSectionTitle}>Video Ad (.wmv)</div>
-            <div className={styles.videoUploadRow}>
-              <input
-                ref={videoFileRef}
-                type="file"
-                accept=".wmv"
-                style={{ display: 'none' }}
-                onChange={e => { setVideoFile(e.target.files[0] || null); setVideoProgress(null) }}
-              />
-              <button
-                className={styles.videoChooseBtn}
-                onClick={() => videoFileRef.current?.click()}
-                disabled={videoUploading}
-              >
-                {videoFile ? videoFile.name : 'Choose .wmv file…'}
-              </button>
-              <input
-                type="number"
-                className={styles.videoDurInput}
-                placeholder="Duration (sec)"
-                min="1"
-                max="999"
-                value={videoDuration}
-                onChange={e => setVideoDuration(e.target.value)}
-                disabled={videoUploading}
-              />
-              <button
-                className={styles.videoUploadBtn}
-                onClick={handleVideoUpload}
-                disabled={!videoFile || !videoDuration || videoUploading}
-              >
-                {videoUploading ? 'Uploading…' : 'Upload Video'}
-              </button>
-            </div>
-            {videoProgress && (
-              <div className={styles.videoProgress}>
-                <span>
-                  {videoProgress.status === 'uploading' ? '⏫' : videoProgress.status === 'done' ? '✓' : '✗'}
-                </span>
-                <span className={styles.videoProgressName}>{videoFile?.name || ''}</span>
-                {videoProgress.status === 'done' && videoProgress.ad &&
-                  <span className={styles.videoProgressOk}>→ {videoProgress.ad.assigned_name} ({videoProgress.ad.sequence_type})</span>
-                }
-                {videoProgress.status === 'error' &&
-                  <span className={styles.videoProgressErr}>{videoProgress.message}</span>
-                }
+            <div className={styles.videoSectionTitle}>Video Ads (.wmv)</div>
+            <input
+              ref={videoFileRef}
+              type="file"
+              accept=".wmv"
+              multiple
+              style={{ display: 'none' }}
+              onChange={e => addVideoFiles(e.target.files)}
+            />
+            <button
+              className={styles.videoChooseBtn}
+              onClick={() => videoFileRef.current?.click()}
+              disabled={videoUploading}
+            >
+              + Choose .wmv files…
+            </button>
+
+            {videoItems.length > 0 && (
+              <div className={styles.videoItemList}>
+                {videoItems.map((item, i) => (
+                  <div key={i} className={styles.videoItem}>
+                    <span className={styles.videoItemName}>{item.file.name}</span>
+                    {item.status === 'pending' && (
+                      <>
+                        <input
+                          type="number"
+                          className={styles.videoDurInput}
+                          placeholder="Seconds"
+                          min="1"
+                          max="999"
+                          value={item.duration}
+                          onChange={e => updateVideoDuration(i, e.target.value)}
+                        />
+                        <button className={styles.videoRemoveBtn} onClick={() => removeVideoItem(i)}>✕</button>
+                      </>
+                    )}
+                    {item.status === 'uploading' && <span className={styles.videoItemStatus}>⏫ Uploading…</span>}
+                    {item.status === 'done' && <span className={styles.videoItemDone}>✓ {item.assignedName}</span>}
+                    {item.status === 'error' && <span className={styles.videoItemErr}>✗ {item.message}</span>}
+                  </div>
+                ))}
               </div>
             )}
+
+            {videoItems.some(it => it.status === 'pending') && (() => {
+              const pending = videoItems.filter(it => it.status === 'pending')
+              const allSet  = pending.every(it => parseInt(it.duration) >= 1)
+              return (
+                <button
+                  className={styles.videoUploadBtn}
+                  onClick={handleVideoUpload}
+                  disabled={!allSet || videoUploading}
+                >
+                  {videoUploading
+                    ? 'Uploading…'
+                    : `Upload ${pending.length} Video${pending.length !== 1 ? 's' : ''}`}
+                </button>
+              )
+            })()}
           </div>
         </div>
 
