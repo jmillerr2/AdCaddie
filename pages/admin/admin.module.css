@@ -781,6 +781,30 @@
   flex-wrap: wrap;
   gap: 8px;
 }
+.activityToggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+}
+.activityToggle:hover .sectionTitle { color: var(--accent); }
+.activityToggleChevron {
+  font-size: 10px;
+  color: var(--muted);
+}
+.activityCount {
+  font-size: 11px;
+  font-weight: 700;
+  font-family: 'DM Mono', monospace;
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: 99px;
+  padding: 1px 8px;
+  color: var(--muted);
+}
 .sectionTitle {
   font-family: 'Inter', sans-serif;
   font-size: 15px;

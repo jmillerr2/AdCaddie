@@ -123,7 +123,8 @@ export default function UploadPortal() {
     })
   }
 
-  async function deleteUpload(id) {
+  async function deleteUpload(id, filename) {
+    if (!confirm(`Remove "${filename}" from your uploads?\n\nThis cannot be undone.`)) return
     const res = await fetch(`/api/delete/${id}`, { method: 'DELETE' })
     if (res.ok) setUploads(prev => prev.filter(u => u.id !== id))
   }
@@ -312,7 +313,7 @@ export default function UploadPortal() {
                     </div>
                     <button
                       className={styles.deleteBtn}
-                      onClick={() => deleteUpload(u.id)}
+                      onClick={() => deleteUpload(u.id, u.original_filename)}
                       title="Delete this file"
                     >
                       ✕

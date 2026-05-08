@@ -86,6 +86,7 @@ export default function Admin() {
   const [downloading, setDownloading] = useState(null)
   const [activityLog, setActivityLog] = useState([])
   const [activityFilter, setActivityFilter] = useState('all')
+  const [activityOpen, setActivityOpen] = useState(false)
   const [selectedFiles, setSelectedFiles] = useState({})
 
   useEffect(() => {
@@ -635,8 +636,14 @@ export default function Admin() {
         {/* Activity Log */}
         <div className={styles.activitySection}>
           <div className={styles.sectionHeader}>
-            <div className={styles.sectionTitle}>Activity Log</div>
-            <div className={styles.activityFilters}>
+            <button className={styles.activityToggle} onClick={() => setActivityOpen(o => !o)}>
+              <span className={styles.sectionTitle}>Activity Log</span>
+              <span className={styles.activityToggleChevron}>{activityOpen ? '▲' : '▼'}</span>
+              {!activityOpen && activityLog.length > 0 && (
+                <span className={styles.activityCount}>{activityLog.length}</span>
+              )}
+            </button>
+            {activityOpen && <div className={styles.activityFilters}>
               {[
                 { key: 'all',                label: 'All' },
                 { key: 'upload',             label: 'Uploads' },
@@ -652,10 +659,10 @@ export default function Admin() {
                   {f.label}
                 </button>
               ))}
-            </div>
+            </div>}
           </div>
 
-          <div className={styles.activityTableWrap}>
+          {activityOpen && <div className={styles.activityTableWrap}>
             {filteredActivity.length === 0 ? (
               <div className={styles.activityEmpty}>No activity yet.</div>
             ) : (
@@ -707,7 +714,7 @@ export default function Admin() {
                 </tbody>
               </table>
             )}
-          </div>
+          </div>}
         </div>
 
       </div>
