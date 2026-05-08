@@ -326,47 +326,44 @@
 .tournTop {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
+  align-items: center;
   gap: 1rem;
-  margin-bottom: 14px;
+  margin-bottom: 12px;
   flex-wrap: wrap;
 }
 .tournLeft {
   display: flex;
   align-items: center;
   gap: 14px;
+  flex: 1;
+  min-width: 0;
 }
 .ring { flex-shrink: 0; }
 
-.tournInfo { flex: 1; }
+.tournInfo { flex: 1; min-width: 0; }
+.tournNameRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 3px;
+}
 .tournName {
   font-family: 'Inter', sans-serif;
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 700;
   color: var(--text);
-  margin-bottom: 2px;
 }
-.tournNotes { font-size: 12px; color: var(--muted); margin-bottom: 3px; }
+.tournNotes { font-size: 12px; color: var(--muted); margin-bottom: 2px; }
 .tournMeta {
   font-size: 11px;
-  color: var(--border2);
+  color: var(--muted);
   font-family: 'DM Mono', monospace;
-}
-.tournDeadline {
-  font-size: 11px;
-  font-family: 'DM Mono', monospace;
-  margin-top: 2px;
 }
 .deadlinePast  { color: #c2410c; }
 .deadlineFuture { color: var(--accent); }
 
-.tournRight {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 8px;
-}
-.tournActions { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.tournActions { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; flex-shrink: 0; }
 
 /* ── BADGES ── */
 .badge {
@@ -403,7 +400,7 @@
 
 /* ── ACTION BUTTONS ── */
 .copyBtn {
-  height: 32px;
+  height: 30px;
   padding: 0 12px;
   background: var(--surface2);
   border: 1px solid var(--border2);
@@ -417,24 +414,43 @@
 }
 .copyBtn:hover { border-color: var(--accent2); background: #eff6ff; }
 
-.expandBtn {
-  width: 32px;
-  height: 32px;
+.iconBtn {
+  width: 30px;
+  height: 30px;
   background: var(--surface2);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  font-size: 10px;
+  font-size: 13px;
   color: var(--muted);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: all 0.15s;
+  flex-shrink: 0;
 }
-.expandBtn:hover { border-color: var(--border2); color: var(--text); }
+.iconBtn:hover:not(:disabled) { border-color: var(--border2); color: var(--text); background: var(--surface); }
+.iconBtn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+.iconBtnDanger {
+  width: 30px;
+  height: 30px;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 12px;
+  color: var(--muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+  flex-shrink: 0;
+}
+.iconBtnDanger:hover { background: #fef2f2; border-color: var(--danger); color: var(--danger); }
 
 .btnDanger {
-  height: 32px;
+  height: 30px;
   padding: 0 12px;
   background: none;
   border: 1px solid var(--border);
@@ -481,28 +497,61 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 0 10px;
+  padding: 8px 0 12px;
   border-bottom: 1px solid var(--border);
   margin-bottom: 12px;
 }
 .selectedCount {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--muted);
   font-family: 'DM Mono', monospace;
-  margin-right: auto;
+  flex: 1;
+  text-align: center;
 }
 .selectAllBtn {
   font-size: 11px;
   font-weight: 600;
-  padding: 3px 10px;
+  padding: 4px 12px;
   border-radius: 6px;
   border: 1px solid var(--border2);
   background: var(--surface);
   color: var(--muted);
   cursor: pointer;
   transition: background 0.15s, color 0.15s;
+  white-space: nowrap;
 }
 .selectAllBtn:hover { background: var(--surface2); color: var(--text); }
+
+.btnDownload {
+  height: 32px;
+  padding: 0 16px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius);
+  font-size: 12px;
+  font-weight: 700;
+  font-family: 'Inter', sans-serif;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+.btnDownload:hover:not(:disabled) { background: var(--accent-h); }
+.btnDownload:disabled { opacity: 0.4; cursor: not-allowed; }
+.btnDownloadOff {
+  height: 32px;
+  padding: 0 16px;
+  background: var(--surface2);
+  color: var(--muted);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius);
+  font-size: 12px;
+  font-weight: 600;
+  font-family: 'Inter', sans-serif;
+  cursor: not-allowed;
+  white-space: nowrap;
+}
+.btnDownloadOff:disabled { opacity: 0.5; }
 
 .fileGalleryCardSelected {
   box-shadow: 0 0 0 2px currentColor;
@@ -605,8 +654,15 @@
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
-  padding-top: 12px;
+  padding-top: 10px;
   border-top: 1px solid var(--border);
+}
+.exportJsonGroup {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  flex: 1;
 }
 .exportLabel {
   font-size: 10px;
@@ -616,6 +672,23 @@
   letter-spacing: 0.08em;
   margin-right: 2px;
 }
+.btnViewFiles {
+  height: 30px;
+  padding: 0 14px;
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s;
+  font-family: 'Inter', sans-serif;
+  flex-shrink: 0;
+}
+.btnViewFiles:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); background: #f0fdf4; }
+.btnViewFiles:disabled { opacity: 0.35; cursor: not-allowed; }
 .btnExport {
   height: 30px;
   padding: 0 12px;

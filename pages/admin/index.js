@@ -490,53 +490,42 @@ export default function Admin() {
                 <div className={styles.tournLeft}>
                   <ProgressRing uploads={t.uploads} />
                   <div className={styles.tournInfo}>
-                    <div className={styles.tournName}>{t.name}</div>
+                    <div className={styles.tournNameRow}>
+                      <span className={styles.tournName}>{t.name}</span>
+                      <StatusBadge status={status} />
+                      {markedComplete && <span className={styles.completeBadge}>✓ Complete</span>}
+                    </div>
                     {t.notes && <div className={styles.tournNotes}>{t.notes}</div>}
                     <div className={styles.tournMeta}>
                       {new Date(t.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                      {totalFiles > 0 && <> · <span>{totalFiles} file{totalFiles !== 1 ? 's' : ''}</span></>}
+                      {totalFiles > 0 && <> · {totalFiles} file{totalFiles !== 1 ? 's' : ''}</>}
                       {lateFiles > 0 && <> · <span style={{ color: '#c2410c' }}>{lateFiles} late</span></>}
+                      {t.deadline && <> · <span className={isPastDeadline ? styles.deadlinePast : styles.deadlineFuture}>
+                        {isPastDeadline ? '⚠ past deadline' : `⏰ due ${fmtDeadline(t.deadline)}`}
+                      </span></>}
                     </div>
-                    {t.deadline && (
-                      <div className={`${styles.tournDeadline} ${isPastDeadline ? styles.deadlinePast : styles.deadlineFuture}`}>
-                        {isPastDeadline ? '⚠ Deadline passed' : '⏰ Deadline'}: {fmtDeadline(t.deadline)}
-                      </div>
-                    )}
                   </div>
                 </div>
-                <div className={styles.tournRight}>
-                  <StatusBadge status={status} />
-                  {markedComplete && <span className={styles.completeBadge}>✓ Complete</span>}
-                  <div className={styles.tournActions}>
-                    <button className={styles.copyBtn} onClick={() => copyLink(t.upload_token)}>
-                      {copied === t.upload_token ? '✓ Copied' : '🔗 Upload link'}
-                    </button>
-                    <button
-                      className={styles.btnGhost}
-                      onClick={() => openPreview(t)}
-                      disabled={previewLoading || totalFiles === 0}
-                      title="Preview JSON output"
-                    >
-                      {previewLoading ? '…' : '👁 Preview'}
-                    </button>
-                    <button
-                      className={styles.expandBtn}
-                      onClick={() => toggleExpand(t.id, t.uploads)}
-                      aria-label={isOpen ? 'Collapse' : 'Expand files'}
-                    >
-                      {isOpen ? '▲' : '▼'}
-                    </button>
-                    <button
-                      className={markedComplete ? styles.btnGhost : styles.btnComplete}
-                      onClick={() => toggleTournamentComplete(t)}
-                      title={markedComplete ? 'Unmark complete' : 'Mark complete'}
-                    >
-                      {markedComplete ? '↩ Unmark' : '✓ Complete'}
-                    </button>
-                    <button className={styles.btnDanger} onClick={() => deleteTournament(t.id)}>
-                      Delete
-                    </button>
-                  </div>
+                <div className={styles.tournActions}>
+                  <button className={styles.copyBtn} onClick={() => copyLink(t.upload_token)}>
+                    {copied === t.upload_token ? '✓ Copied' : '🔗 Copy Link'}
+                  </button>
+                  <button
+                    className={styles.iconBtn}
+                    onClick={() => openPreview(t)}
+                    disabled={previewLoading || totalFiles === 0}
+                    title="Preview JSON"
+                  >
+                    👁
+                  </button>
+                  <button
+                    className={markedComplete ? styles.btnGhost : styles.btnComplete}
+                    onClick={() => toggleTournamentComplete(t)}
+                    title={markedComplete ? 'Unmark complete' : 'Mark complete'}
+                  >
+                    {markedComplete ? '↩ Unmark' : '✓ Complete'}
+                  </button>
+                  <button className={styles.iconBtnDanger} onClick={() => deleteTournament(t.id)} title="Delete tournament">✕</button>
                 </div>
               </div>
 
@@ -571,9 +560,16 @@ export default function Admin() {
                 <div className={styles.fileGallery}>
                   {totalFiles > 0 && (
                     <div className={styles.galleryToolbar}>
-                      <span className={styles.selectedCount}>{selCount} of {totalFiles} selected</span>
                       <button className={styles.selectAllBtn} onClick={() => selectAll(t)}>Select All</button>
                       <button className={styles.selectAllBtn} onClick={() => deselectAll(t.id)}>Deselect All</button>
+                      <span className={styles.selectedCount}>{selCount} of {totalFiles} selected</span>
+                      <button
+                        className={selCount > 0 ? styles.btnDownload : styles.btnDownloadOff}
+                        onClick={() => downloadSelected(t)}
+                        disabled={downloading === t.id || selCount === 0}
+                      >
+                        {downloading === t.id ? '⏳ Downloading…' : `⬇ Download${selCount > 0 ? ` (${selCount})` : ''}`}
+                      </button>
                     </div>
                   )}
                   {SLOTS.map(s => {
@@ -632,18 +628,24 @@ export default function Admin() {
 
               {/* Export row */}
               <div className={styles.exportRow}>
-                <span className={styles.exportLabel}>Export:</span>
-                <button className={styles.btnExport} onClick={() => exportJSON(t, 'elements')} disabled={!!exporting || totalFiles === 0}>
-                  {exporting === `${t.id}-elements` ? '…' : '⬇ elements.json'}
-                </button>
-                <button className={styles.btnExport} onClick={() => exportJSON(t, 'sequences')} disabled={!!exporting || totalFiles === 0}>
-                  {exporting === `${t.id}-sequences` ? '…' : '⬇ sequences.json'}
-                </button>
-                <button className={styles.btnAccentSm} onClick={() => exportJSON(t, 'both')} disabled={!!exporting || totalFiles === 0}>
-                  {exporting === `${t.id}-both` ? '…' : '⬇ Both'}
-                </button>
-                <button className={styles.btnExport} onClick={() => downloadSelected(t)} disabled={downloading === t.id || selCount === 0}>
-                  {downloading === t.id ? '⏳ Downloading…' : `⬇ Files${selCount > 0 ? ` (${selCount})` : ''}`}
+                <div className={styles.exportJsonGroup}>
+                  <span className={styles.exportLabel}>JSON</span>
+                  <button className={styles.btnExport} onClick={() => exportJSON(t, 'elements')} disabled={!!exporting || totalFiles === 0}>
+                    {exporting === `${t.id}-elements` ? '…' : 'elements.json'}
+                  </button>
+                  <button className={styles.btnExport} onClick={() => exportJSON(t, 'sequences')} disabled={!!exporting || totalFiles === 0}>
+                    {exporting === `${t.id}-sequences` ? '…' : 'sequences.json'}
+                  </button>
+                  <button className={styles.btnAccentSm} onClick={() => exportJSON(t, 'both')} disabled={!!exporting || totalFiles === 0}>
+                    {exporting === `${t.id}-both` ? '…' : '⬇ Export Both'}
+                  </button>
+                </div>
+                <button
+                  className={styles.btnViewFiles}
+                  onClick={() => toggleExpand(t.id, t.uploads)}
+                  disabled={totalFiles === 0}
+                >
+                  {isOpen ? '▲ Hide Files' : `▼ View Files${totalFiles > 0 ? ` (${totalFiles})` : ''}`}
                 </button>
               </div>
             </div>
