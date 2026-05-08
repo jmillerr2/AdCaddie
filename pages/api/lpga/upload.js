@@ -119,8 +119,15 @@ export default async function handler(req, res) {
     .from('lpga_ads')
     .select('id', { count: 'exact', head: true })
 
+  // Include duration suffix for videos: C-01(30s)
+  let durationSec = isVideo ? parseFloat(req.query.duration) : null
+  if (isVideo && (!durationSec || isNaN(durationSec))) {
+    const m = filename.match(/\((\d+)s?\)/)
+    if (m) durationSec = parseInt(m[1])
+  }
+  const dur = (isVideo && durationSec) ? `(${Math.round(durationSec)}s)` : ''
   const n = String((count || 0) + 1).padStart(2, '0')
-  const assignedName = `C-${n}`
+  const assignedName = `C-${n}${dur}`
   const filePath     = `lpga/${assignedName}.${ext}`
 
   const { error: storageErr } = await supabase.storage

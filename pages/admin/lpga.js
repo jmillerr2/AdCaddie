@@ -18,6 +18,7 @@ export default function LpgaAds() {
   const [uploading, setUploading] = useState(false)
   const [progress, setProgress]   = useState([])
   const [dragging, setDragging]   = useState(false)
+  const [downloading, setDownloading] = useState(false)
   const fileRef = useRef()
 
   useEffect(() => {
@@ -70,10 +71,14 @@ export default function LpgaAds() {
         formData.append('file', file)
 
         let extraQuery = ''
-        const isVid = /\.(wmv|mp4|mov|avi|mpg|mpeg)$/i.test(file.name)
+        const isVid = /\.(wmv)$/i.test(file.name)
         if (isVid) {
           const dims = await getVideoDimensions(file).catch(() => null)
-          if (dims) extraQuery = `?width=${dims.width}&height=${dims.height}`
+          let dur = dims?.duration && !isNaN(dims.duration) ? dims.duration : null
+          if (!dur) dur = parseDurationFromFilename(file.name)
+          const w = dims?.width || 0
+          const h = dims?.height || 0
+          extraQuery = `?width=${w}&height=${h}${dur ? `&duration=${dur}` : ''}`
         }
 
         const res = await fetch(`/api/lpga/upload${extraQuery}`, {
@@ -99,14 +104,56 @@ export default function LpgaAds() {
     setTimeout(() => setProgress([]), 5000)
   }
 
+  function parseDurationFromFilename(filename) {
+    const m = filename.match(/\((\d+)s?\)/)
+    return m ? parseInt(m[1]) : null
+  }
+
   function getVideoDimensions(file) {
     return new Promise((resolve, reject) => {
       const url = URL.createObjectURL(file)
       const video = document.createElement('video')
-      video.onloadedmetadata = () => { resolve({ width: video.videoWidth, height: video.videoHeight }); URL.revokeObjectURL(url) }
+      video.onloadedmetadata = () => { resolve({ width: video.videoWidth, height: video.videoHeight, duration: video.duration }); URL.revokeObjectURL(url) }
       video.onerror = reject
       video.src = url
     })
+  }
+
+  async function downloadAd(ad) {
+    const res = await fetch(ad.file_url)
+    const blob = await res.blob()
+    const ext = (ad.original_filename || ad.assigned_name).split('.').pop()
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(blob)
+    a.download = `${ad.assigned_name}.${ext}`
+    a.click()
+    URL.revokeObjectURL(a.href)
+  }
+
+  async function downloadAll() {
+    if (!ads.length) return
+    setDownloading(true)
+    try {
+      const JSZip = (await import('jszip')).default
+      const zip = new JSZip()
+      const folder = zip.folder('LPGA-Ads')
+      for (const ad of ads) {
+        try {
+          const res = await fetch(ad.file_url)
+          const blob = await res.blob()
+          const ext = (ad.original_filename || '').split('.').pop() || 'jpg'
+          folder.file(`${ad.assigned_name}.${ext}`, blob)
+        } catch { /* skip */ }
+      }
+      const content = await zip.generateAsync({ type: 'blob' })
+      const a = document.createElement('a')
+      a.href = URL.createObjectURL(content)
+      a.download = 'LPGA-Ads.zip'
+      a.click()
+      URL.revokeObjectURL(a.href)
+    } finally {
+      setDownloading(false)
+    }
   }
 
   async function toggleActive(ad) {
@@ -232,6 +279,9 @@ export default function LpgaAds() {
             <div className={styles.statPill}><strong>{ads.length}</strong> total ads</div>
             <div className={styles.statPill}><strong>{activeCount}</strong> active</div>
             <div className={styles.statPill}><strong>{ads.length - activeCount}</strong> inactive</div>
+            <button className={styles.downloadAllBtn} onClick={downloadAll} disabled={downloading}>
+              {downloading ? '⏳ Zipping…' : `⬇ Download All (${ads.length})`}
+            </button>
           </div>
         )}
 
@@ -283,6 +333,7 @@ export default function LpgaAds() {
                         >
                           {ad.is_active ? '✓ Active' : 'Inactive'}
                         </button>
+                        <button className={styles.downloadBtn} onClick={() => downloadAd(ad)} title="Download">⬇</button>
                         <button className={styles.deleteBtn} onClick={() => deleteAd(ad)} title="Delete">✕</button>
                       </div>
                     </div>

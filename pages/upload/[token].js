@@ -88,6 +88,8 @@ export default function UploadPortal() {
         if (isVid) {
           const dims = await getVideoDimensions(file).catch(() => null)
           if (dims) { width = dims.width; height = dims.height; duration = dims.duration }
+          // WMV files can't be decoded by the browser — fall back to parsing from filename e.g. "ad(30).wmv"
+          if (!duration || isNaN(duration)) duration = parseDurationFromFilename(file.name)
         } else {
           const dims = await getImageDimensions(file).catch(() => null)
           if (dims) { width = dims.width; height = dims.height }
@@ -155,6 +157,11 @@ export default function UploadPortal() {
     setUploading(false)
     await loadTournament()
     setTimeout(() => setUploadProgress([]), 6000)
+  }
+
+  function parseDurationFromFilename(filename) {
+    const m = filename.match(/\((\d+)s?\)/)
+    return m ? parseInt(m[1]) : null
   }
 
   function getImageDimensions(file) {
