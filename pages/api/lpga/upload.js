@@ -132,7 +132,7 @@ export default async function handler(req, res) {
 
   const { error: storageErr } = await supabase.storage
     .from('ads')
-    .upload(filePath, fileBuffer, { contentType: mimeType, upsert: false })
+    .upload(filePath, fileBuffer, { contentType: mimeType, upsert: true })
 
   if (storageErr) return res.status(500).json({ error: storageErr.message })
 

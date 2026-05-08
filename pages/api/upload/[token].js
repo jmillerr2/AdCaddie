@@ -63,7 +63,7 @@ export default async function handler(req, res) {
 
     const { data: signData, error: signErr } = await supabase.storage
       .from('ads')
-      .createSignedUploadUrl(filePath)
+      .createSignedUploadUrl(filePath, { upsert: true })
     if (signErr) return res.status(500).json({ error: signErr.message })
 
     const isLate = !!(tournament.deadline && new Date() > new Date(tournament.deadline))
