@@ -6,189 +6,123 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 )
 
-export const config = {
-  api: { bodyParser: false }
-}
-
-async function parseForm(req) {
-  return new Promise((resolve, reject) => {
-    const chunks = []
-    req.on('data', chunk => chunks.push(chunk))
-    req.on('end', () => resolve(Buffer.concat(chunks)))
-    req.on('error', reject)
-  })
-}
-
-function getBoundary(contentType) {
-  const match = contentType.match(/boundary=(.+)$/)
-  return match ? match[1] : null
-}
-
-function parseMultipart(buffer, boundary) {
-  const parts = []
-  const sep   = Buffer.from(`--${boundary}`)
-  const end   = Buffer.from(`--${boundary}--`)
-  let pos = 0
-
-  while (pos < buffer.length) {
-    const sepIdx = buffer.indexOf(sep, pos)
-    if (sepIdx === -1) break
-    pos = sepIdx + sep.length
-
-    if (buffer.slice(pos, pos + 2).equals(Buffer.from('--'))) break
-
-    pos += 2
-
-    const headerEnd = buffer.indexOf(Buffer.from('\r\n\r\n'), pos)
-    if (headerEnd === -1) break
-
-    const headerStr = buffer.slice(pos, headerEnd).toString()
-    pos = headerEnd + 4
-
-    const nextSep = buffer.indexOf(sep, pos)
-    if (nextSep === -1) break
-
-    const bodyEnd = nextSep - 2
-    const body    = buffer.slice(pos, bodyEnd)
-    pos = nextSep
-
-    const headers = {}
-    headerStr.split('\r\n').forEach(line => {
-      const [key, ...vals] = line.split(': ')
-      if (key) headers[key.toLowerCase()] = vals.join(': ')
-    })
-
-    const dispMatch = (headers['content-disposition'] || '').match(/name="([^"]+)"/)
-    const fileMatch = (headers['content-disposition'] || '').match(/filename="([^"]+)"/)
-    const name      = dispMatch ? dispMatch[1] : null
-    const filename  = fileMatch ? fileMatch[1] : null
-    const type      = headers['content-type'] || 'application/octet-stream'
-
-    parts.push({ name, filename, type, body })
-  }
-  return parts
-}
-
-async function getImageDimensions(buffer) {
-  try {
-    const sharp = (await import('sharp')).default
-    const meta  = await sharp(buffer).metadata()
-    return { width: meta.width, height: meta.height }
-  } catch {
-    return null
-  }
-}
-
-function isVideoFile(filename) {
-  return (filename.split('.').pop() || '').toLowerCase() === 'wmv'
-}
+const MAX_SIZE = 20 * 1024 * 1024 // 20 MB
 
 export default async function handler(req, res) {
-  if (req.method !== 'POST') return res.status(405).end()
-
   const { token } = req.query
-  if (!token) return res.status(400).json({ error: 'Missing token' })
 
-  const { data: tournament, error: tErr } = await supabase
-    .from('tournaments')
-    .select('id, name, deadline')
-    .eq('upload_token', token)
-    .single()
+  // ── GET: validate file + return signed upload URL ──────────────────────────
+  if (req.method === 'GET') {
+    const { filename, width, height, size } = req.query
+    if (!filename) return res.status(400).json({ error: 'Missing filename' })
 
-  if (tErr || !tournament) return res.status(404).json({ error: 'Tournament not found' })
+    const { data: tournament, error: tErr } = await supabase
+      .from('tournaments')
+      .select('id, name, deadline')
+      .eq('upload_token', token)
+      .single()
+    if (tErr || !tournament) return res.status(404).json({ error: 'Tournament not found' })
 
-  const contentType = req.headers['content-type'] || ''
-  const boundary    = getBoundary(contentType)
-  if (!boundary) return res.status(400).json({ error: 'No boundary in content-type' })
+    const ext = filename.split('.').pop().toLowerCase()
+    if (!['jpg', 'jpeg', 'wmv'].includes(ext)) {
+      return res.status(422).json({ error: `File type ".${ext}" is not accepted. Only .jpg, .jpeg and .wmv are allowed.` })
+    }
 
-  const rawBody  = await parseForm(req)
-  const parts    = parseMultipart(rawBody, boundary)
-  const filePart = parts.find(p => p.filename)
-
-  if (!filePart) return res.status(400).json({ error: 'No file found in upload' })
-
-  const { filename, type: mimeType, body: fileBuffer } = filePart
-  const ext     = filename.split('.').pop().toLowerCase()
-  const isVideo = ext === 'wmv'
-
-  if (!['jpg', 'jpeg', 'wmv'].includes(ext)) {
-    return res.status(422).json({ error: `File type ".${ext}" is not accepted. Only .jpg, .jpeg (images) and .wmv (videos) are allowed.` })
-  }
-
-  let width = 0, height = 0, sequenceType = null
-
-  if (!isVideo) {
-    const dims = await getImageDimensions(fileBuffer)
-    if (dims) { width = dims.width; height = dims.height }
-    sequenceType = detectSequenceType(width, height)
-    if (!sequenceType) {
+    const sizeBytes = parseInt(size) || 0
+    if (sizeBytes > MAX_SIZE) {
       return res.status(422).json({
-        error: `Invalid image dimensions: ${width}x${height}. Expected 960x540, 320x540, 1280x120, or 1280x60.`
+        error: `File is too large (${(sizeBytes / 1024 / 1024).toFixed(1)} MB). Maximum size is 20 MB.`
       })
     }
-  } else {
-    const qw = parseInt(req.query.width)
-    const qh = parseInt(req.query.height)
-    if (qw && qh) {
-      width = qw; height = qh
-      sequenceType = detectSequenceType(width, height)
+
+    const isVideo = ext === 'wmv'
+    const w = parseInt(width) || 0
+    const h = parseInt(height) || 0
+    let sequenceType = null
+
+    if (!isVideo) {
+      sequenceType = detectSequenceType(w, h)
+      if (!sequenceType) {
+        return res.status(422).json({
+          error: `Invalid image dimensions: ${w}x${h}. Expected 960x540, 320x540, 1280x120, or 1280x60.`
+        })
+      }
+    } else {
+      sequenceType = detectSequenceType(w, h) || 'MainContent'
     }
-    if (!sequenceType) {
-      sequenceType = 'MainContent'
-      width = 960; height = 540
-    }
+
+    const { count } = await supabase
+      .from('uploads')
+      .select('id', { count: 'exact', head: true })
+      .eq('tournament_id', tournament.id)
+      .eq('sequence_type', sequenceType)
+
+    const assignedName = assignName(sequenceType, count || 0)
+    const filePath = `${tournament.id}/${assignedName}.${ext}`
+
+    const { data: signData, error: signErr } = await supabase.storage
+      .from('ads')
+      .createSignedUploadUrl(filePath)
+    if (signErr) return res.status(500).json({ error: signErr.message })
+
+    const isLate = !!(tournament.deadline && new Date() > new Date(tournament.deadline))
+
+    return res.status(200).json({
+      assignedName,
+      filePath,
+      sequenceType,
+      uploadToken: signData.token,
+      isLate,
+      tournamentId: tournament.id,
+      width: w,
+      height: h,
+      isVideo,
+    })
   }
 
-  const { count } = await supabase
-    .from('uploads')
-    .select('id', { count: 'exact', head: true })
-    .eq('tournament_id', tournament.id)
-    .eq('sequence_type', sequenceType)
+  // ── POST: register upload in DB after client has stored the file ───────────
+  if (req.method === 'POST') {
+    const body = req.body
+    const { assignedName, filePath, sequenceType, originalFilename, width, height, isVideo, sizeBytes, isLate, tournamentId } = body
 
-  const assignedName = assignName(sequenceType, count || 0)
-  const filePath     = `${tournament.id}/${assignedName}.${ext}`
+    if (!assignedName || !filePath || !tournamentId) {
+      return res.status(400).json({ error: 'Missing required fields' })
+    }
 
-  const { error: storageErr } = await supabase.storage
-    .from('ads')
-    .upload(filePath, fileBuffer, { contentType: mimeType, upsert: false })
+    const { data: urlData } = supabase.storage.from('ads').getPublicUrl(filePath)
 
-  if (storageErr) return res.status(500).json({ error: storageErr.message })
+    const { data: upload, error: dbErr } = await supabase
+      .from('uploads')
+      .insert({
+        tournament_id:     tournamentId,
+        original_filename: originalFilename,
+        assigned_name:     assignedName,
+        sequence_type:     sequenceType,
+        file_path:         filePath,
+        file_url:          urlData.publicUrl,
+        width,
+        height,
+        is_video:          isVideo,
+        size_bytes:        sizeBytes,
+        is_late:           isLate,
+      })
+      .select()
+      .single()
 
-  const { data: urlData } = supabase.storage.from('ads').getPublicUrl(filePath)
+    if (dbErr) return res.status(500).json({ error: dbErr.message })
 
-  // Determine if upload is late
-  const isLate = !!(tournament.deadline && new Date() > new Date(tournament.deadline))
+    supabase.from('activity_log').insert({
+      tournament_id:  tournamentId,
+      event_type:     'upload',
+      filename:       originalFilename,
+      assigned_name:  assignedName,
+      sequence_type:  sequenceType,
+      is_late:        isLate,
+      metadata:       { size_bytes: sizeBytes, width, height, is_video: isVideo }
+    }).then(() => {})
 
-  const { data: upload, error: dbErr } = await supabase
-    .from('uploads')
-    .insert({
-      tournament_id:     tournament.id,
-      original_filename: filename,
-      assigned_name:     assignedName,
-      sequence_type:     sequenceType,
-      file_path:         filePath,
-      file_url:          urlData.publicUrl,
-      width,
-      height,
-      is_video:          isVideo,
-      size_bytes:        fileBuffer.length,
-      is_late:           isLate,
-    })
-    .select()
-    .single()
+    return res.status(200).json({ upload })
+  }
 
-  if (dbErr) return res.status(500).json({ error: dbErr.message })
-
-  // Log activity (non-blocking)
-  supabase.from('activity_log').insert({
-    tournament_id:  tournament.id,
-    event_type:     'upload',
-    filename:       filename,
-    assigned_name:  assignedName,
-    sequence_type:  sequenceType,
-    is_late:        isLate,
-    metadata:       { size_bytes: fileBuffer.length, width, height, is_video: isVideo }
-  }).then(() => {})
-
-  return res.status(200).json({ upload })
+  return res.status(405).end()
 }

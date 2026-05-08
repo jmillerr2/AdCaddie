@@ -80,26 +80,69 @@ export default function UploadPortal() {
       setUploadProgress([...updProg])
 
       try {
-        const formData = new FormData()
-        formData.append('file', file)
+        const ext = file.name.split('.').pop().toLowerCase()
+        const isVid = ext === 'wmv'
 
-        let extraQuery = ''
-        const isVid = /\.(wmv|mp4|mov|avi|mpg|mpeg)$/i.test(file.name)
+        // Read dimensions client-side
+        let width = 0, height = 0
         if (isVid) {
           const dims = await getVideoDimensions(file).catch(() => null)
-          if (dims) extraQuery = `&width=${dims.width}&height=${dims.height}`
+          if (dims) { width = dims.width; height = dims.height }
+        } else {
+          const dims = await getImageDimensions(file).catch(() => null)
+          if (dims) { width = dims.width; height = dims.height }
         }
 
-        const res = await fetch(`/api/upload/${token}${extraQuery ? '?' + extraQuery.slice(1) : ''}`, {
-          method: 'POST',
-          body: formData
-        })
+        // Step 1: validate + get signed upload URL from server
+        const signRes = await fetch(
+          `/api/upload/${token}?filename=${encodeURIComponent(file.name)}&width=${width}&height=${height}&size=${file.size}`
+        )
+        let signJson = {}
+        try { signJson = await signRes.json() } catch {
+          signJson = { error: `Server error (${signRes.status})` }
+        }
+        if (!signRes.ok) {
+          updProg[i] = { ...updProg[i], status: 'error', message: signJson.error }
+          setUploadProgress([...updProg])
+          continue
+        }
 
-        const json = await res.json()
-        if (!res.ok) {
-          updProg[i] = { ...updProg[i], status: 'error', message: json.error }
+        const { assignedName, filePath, sequenceType, uploadToken, isLate, tournamentId } = signJson
+
+        // Step 2: upload directly to Supabase Storage (bypasses Vercel size limit)
+        const { error: storageErr } = await supabase.storage
+          .from('ads')
+          .uploadToSignedUrl(filePath, uploadToken, file, {
+            contentType: file.type || 'application/octet-stream'
+          })
+        if (storageErr) {
+          updProg[i] = { ...updProg[i], status: 'error', message: storageErr.message }
+          setUploadProgress([...updProg])
+          continue
+        }
+
+        // Step 3: register upload record in DB
+        const regRes = await fetch(`/api/upload/${token}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            assignedName, filePath, sequenceType,
+            originalFilename: file.name,
+            width, height,
+            isVideo: isVid,
+            sizeBytes: file.size,
+            isLate,
+            tournamentId,
+          })
+        })
+        let regJson = {}
+        try { regJson = await regRes.json() } catch {
+          regJson = { error: `Server error (${regRes.status})` }
+        }
+        if (!regRes.ok) {
+          updProg[i] = { ...updProg[i], status: 'error', message: regJson.error }
         } else {
-          updProg[i] = { ...updProg[i], status: 'done', upload: json.upload }
+          updProg[i] = { ...updProg[i], status: 'done', upload: regJson.upload }
         }
         setUploadProgress([...updProg])
       } catch (err) {
@@ -111,6 +154,16 @@ export default function UploadPortal() {
     setUploading(false)
     await loadTournament()
     setTimeout(() => setUploadProgress([]), 6000)
+  }
+
+  function getImageDimensions(file) {
+    return new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(file)
+      const img = new Image()
+      img.onload = () => { resolve({ width: img.naturalWidth, height: img.naturalHeight }); URL.revokeObjectURL(url) }
+      img.onerror = reject
+      img.src = url
+    })
   }
 
   function getVideoDimensions(file) {
