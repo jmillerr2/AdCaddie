@@ -83,6 +83,7 @@ export default function Admin() {
   const [expanded, setExpanded]       = useState({})
   const [preview, setPreview]         = useState(null)   // { tournament, elements, sequences, tab }
   const [previewLoading, setPreviewLoading] = useState(false)
+  const [downloading, setDownloading] = useState(null)
   const [activityLog, setActivityLog] = useState([])
   const [activityFilter, setActivityFilter] = useState('all')
 
@@ -219,6 +220,38 @@ export default function Admin() {
     const sequences = generateSequencesJSON(uploads || [], lpgaAds || [])
     setPreview({ tournament, elements, sequences, tab: 'elements' })
     setPreviewLoading(false)
+  }
+
+  async function downloadFiles(tournament) {
+    setDownloading(tournament.id)
+    try {
+      const { data: uploads } = await supabase
+        .from('uploads').select('*').eq('tournament_id', tournament.id)
+      if (!uploads?.length) return
+
+      const JSZip = (await import('jszip')).default
+      const zip = new JSZip()
+      const folder = zip.folder(tournament.name)
+
+      for (const u of uploads) {
+        try {
+          const res = await fetch(u.file_url)
+          const blob = await res.blob()
+          const ext = u.original_filename.split('.').pop()
+          folder.file(`${u.assigned_name}.${ext}`, blob)
+        } catch { /* skip files that fail to fetch */ }
+      }
+
+      const content = await zip.generateAsync({ type: 'blob' })
+      const url = URL.createObjectURL(content)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${tournament.name}.zip`
+      a.click()
+      URL.revokeObjectURL(url)
+    } finally {
+      setDownloading(null)
+    }
   }
 
   function toggleExpand(id) {
@@ -470,45 +503,45 @@ export default function Admin() {
                 })}
               </div>
 
-              {/* Expanded file list */}
+              {/* File gallery */}
               {isOpen && (
-                <div className={styles.fileList}>
+                <div className={styles.fileGallery}>
                   {SLOTS.map(s => {
                     const slotUps = (t.uploads || []).filter(u => u.sequence_type === s.type)
+                    if (slotUps.length === 0) return null
                     return (
-                      <div key={s.type} className={styles.fileGroup}>
-                        <div className={styles.fileGroupHeader}>
+                      <div key={s.type} className={styles.fileGallerySlot}>
+                        <div className={styles.fileGallerySlotHeader}>
                           <span style={{ color: s.color }}>{s.label}</span>
                           <span className={styles.fileGroupDim}>{s.dim}</span>
-                          {slotUps.length === 0 && (
-                            <span className={styles.fileMissing}>No files uploaded</span>
-                          )}
+                          <span className={styles.fileGroupDim}>· {slotUps.length} file{slotUps.length !== 1 ? 's' : ''}</span>
                         </div>
-                        {slotUps.length > 0 && (
-                          <div className={styles.fileItems}>
-                            {slotUps.map(u => (
-                              <div key={u.id} className={styles.fileItem}>
-                                <div className={styles.fileThumbBox}>
-                                  {u.is_video
-                                    ? <div className={styles.videoThumb}>▶</div>
-                                    : <img src={u.file_url} alt={u.assigned_name} className={styles.fileThumbImg} />
-                                  }
-                                </div>
-                                <div className={styles.fileInfo}>
-                                  <span className={styles.fileAssigned} style={{ color: s.color }}>
-                                    {u.assigned_name}
-                                    {u.is_late && <span className={styles.lateBadge}>Late</span>}
-                                  </span>
-                                  <span className={styles.fileOrig}>{u.original_filename}</span>
-                                  <span className={styles.fileDims}>{u.width}×{u.height} · {Math.round((u.size_bytes || 0) / 1024)} KB</span>
-                                </div>
+                        <div className={styles.fileGalleryGrid}>
+                          {slotUps.map(u => (
+                            <div key={u.id} className={styles.fileGalleryCard} style={{ borderColor: s.color + '40' }}>
+                              <div className={styles.fileGalleryThumb}>
+                                {u.is_video
+                                  ? <div className={styles.videoThumb}>▶</div>
+                                  : <img src={u.file_url} alt={u.assigned_name} className={styles.fileGalleryImg} />
+                                }
                               </div>
-                            ))}
-                          </div>
-                        )}
+                              <div className={styles.fileGalleryInfo}>
+                                <div className={styles.fileAssigned} style={{ color: s.color }}>
+                                  {u.assigned_name}
+                                  {u.is_late && <span className={styles.lateBadge}>Late</span>}
+                                </div>
+                                <div className={styles.fileOrig}>{u.original_filename}</div>
+                                <div className={styles.fileDims}>{u.width}×{u.height} · {Math.round((u.size_bytes || 0) / 1024)} KB</div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     )
                   })}
+                  {totalFiles === 0 && (
+                    <div className={styles.fileMissing} style={{ textAlign: 'center', padding: '1rem' }}>No files uploaded yet.</div>
+                  )}
                 </div>
               )}
 
@@ -523,6 +556,9 @@ export default function Admin() {
                 </button>
                 <button className={styles.btnAccentSm} onClick={() => exportJSON(t, 'both')} disabled={!!exporting || totalFiles === 0}>
                   {exporting === `${t.id}-both` ? '…' : '⬇ Both'}
+                </button>
+                <button className={styles.btnExport} onClick={() => downloadFiles(t)} disabled={downloading === t.id || totalFiles === 0}>
+                  {downloading === t.id ? '⏳ Zipping…' : '⬇ Files (.zip)'}
                 </button>
               </div>
             </div>
