@@ -160,6 +160,20 @@ export default function Admin() {
     setCreating(false)
   }
 
+  async function removeAllFiles(tournament) {
+    if (!confirm(
+      `⚠ Remove all ${(tournament.uploads || []).length} uploaded file${(tournament.uploads || []).length !== 1 ? 's' : ''} from "${tournament.name}"?\n\nThis permanently deletes every ad file for this tournament and cannot be undone.`
+    )) return
+    const res = await fetch(`/api/delete/tournament/${tournament.id}`, { method: 'DELETE' })
+    if (res.ok) {
+      loadTournaments()
+      loadActivityLog()
+    } else {
+      const json = await res.json().catch(() => ({}))
+      alert(`Failed to remove files: ${json.error || 'Unknown error'}`)
+    }
+  }
+
   async function toggleTournamentComplete(tournament) {
     const next = !tournament.is_complete
     await supabase.from('tournaments').update({ is_complete: next }).eq('id', tournament.id)
@@ -646,6 +660,14 @@ export default function Admin() {
                   disabled={totalFiles === 0}
                 >
                   {isOpen ? '▲ Hide Files' : `▼ View Files${totalFiles > 0 ? ` (${totalFiles})` : ''}`}
+                </button>
+                <button
+                  className={styles.btnRemoveAll}
+                  onClick={() => removeAllFiles(t)}
+                  disabled={totalFiles === 0}
+                  title="Remove all uploaded files for this tournament"
+                >
+                  Remove All
                 </button>
               </div>
             </div>

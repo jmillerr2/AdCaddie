@@ -689,6 +689,24 @@
 }
 .btnViewFiles:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); background: #f0fdf4; }
 .btnViewFiles:disabled { opacity: 0.35; cursor: not-allowed; }
+
+.btnRemoveAll {
+  height: 30px;
+  padding: 0 12px;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s;
+  font-family: 'Inter', sans-serif;
+  flex-shrink: 0;
+}
+.btnRemoveAll:hover:not(:disabled) { background: #fef2f2; border-color: var(--danger); color: var(--danger); }
+.btnRemoveAll:disabled { opacity: 0.25; cursor: not-allowed; }
 .btnExport {
   height: 30px;
   padding: 0 12px;

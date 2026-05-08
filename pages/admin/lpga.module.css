@@ -310,6 +310,21 @@
 .downloadAllBtn:hover:not(:disabled) { background: var(--surface2); }
 .downloadAllBtn:disabled { opacity: 0.5; cursor: not-allowed; }
 
+.removeAllBtn {
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 14px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.removeAllBtn:hover { background: #fef2f2; border-color: var(--danger); color: var(--danger); }
+
 /* ── EMPTY SLOT ── */
 .slotEmpty {
   padding: 1.5rem;

@@ -141,6 +141,19 @@ export default function LpgaAds() {
     }
   }
 
+  async function removeAll() {
+    if (!confirm(
+      `⚠ Remove all ${ads.length} LPGA ad${ads.length !== 1 ? 's' : ''}?\n\nThis permanently deletes every LPGA ad file and cannot be undone. They will no longer appear in any tournament export.`
+    )) return
+    const res = await fetch('/api/lpga/delete-all', { method: 'DELETE' })
+    if (res.ok) {
+      setAds([])
+    } else {
+      const json = await res.json().catch(() => ({}))
+      alert(`Failed to remove ads: ${json.error || 'Unknown error'}`)
+    }
+  }
+
   async function downloadAll() {
     if (!ads.length) return
     setDownloading(true)
@@ -293,6 +306,9 @@ export default function LpgaAds() {
             <div className={styles.statPill}><strong>{ads.length - activeCount}</strong> inactive</div>
             <button className={styles.downloadAllBtn} onClick={downloadAll} disabled={downloading}>
               {downloading ? '⏳ Zipping…' : `⬇ Download All (${ads.length})`}
+            </button>
+            <button className={styles.removeAllBtn} onClick={removeAll}>
+              Remove All
             </button>
           </div>
         )}
