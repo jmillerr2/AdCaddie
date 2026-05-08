@@ -114,20 +114,14 @@ export default async function handler(req, res) {
     }
   }
 
-  // Assign next C-XX name globally across all lpga_ads
+  // Count per sequence type so each zone has its own numbering
   const { count } = await supabase
     .from('lpga_ads')
     .select('id', { count: 'exact', head: true })
+    .eq('sequence_type', sequenceType)
 
-  // Include duration suffix for videos: C-01(30s)
-  let durationSec = isVideo ? parseFloat(req.query.duration) : null
-  if (isVideo && (!durationSec || isNaN(durationSec))) {
-    const m = filename.match(/\((\d+)(?:seconds?|secs?|s)?\)/i)
-    if (m) durationSec = parseInt(m[1])
-  }
-  const dur = (isVideo && durationSec) ? `(${Math.round(durationSec)}s)` : ''
   const n = String((count || 0) + 1).padStart(2, '0')
-  const assignedName = `C-${n}${dur}`
+  const assignedName = sequenceType === 'RightRail' ? `R-LPGA-${n}` : `C${n}`
   const filePath     = `lpga/${assignedName}.${ext}`
 
   const { error: storageErr } = await supabase.storage

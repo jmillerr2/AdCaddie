@@ -15,13 +15,20 @@ export default async function handler(req, res) {
     const ext = filename.split('.').pop().toLowerCase()
     if (ext !== 'wmv') return res.status(422).json({ error: 'Only .wmv files are accepted here' })
 
+    const w           = parseInt(width)  || 960
+    const h           = parseInt(height) || 540
+    const sequenceType = detectSequenceType(w, h) || 'MainContent'
+
     const { count } = await supabase
       .from('lpga_ads')
       .select('id', { count: 'exact', head: true })
+      .eq('sequence_type', sequenceType)
 
     const durationSec  = Math.round(parseFloat(duration))
     const n            = String((count || 0) + 1).padStart(2, '0')
-    const assignedName = `C-${n}(${durationSec}s)`
+    const assignedName = sequenceType === 'RightRail'
+      ? `R-LPGA-${n}(${durationSec}s)`
+      : `C${n}(${durationSec}s)`
     const filePath     = `lpga/${assignedName}.wmv`
 
     const { data: signData, error: signErr } = await supabase.storage
@@ -29,14 +36,11 @@ export default async function handler(req, res) {
       .createSignedUploadUrl(filePath, { upsert: true })
     if (signErr) return res.status(500).json({ error: signErr.message })
 
-    const w = parseInt(width) || 960
-    const h = parseInt(height) || 540
-
     return res.status(200).json({
       assignedName,
       filePath,
       uploadToken: signData.token,
-      sequenceType: detectSequenceType(w, h) || 'MainContent',
+      sequenceType,
       width: w,
       height: h,
     })
