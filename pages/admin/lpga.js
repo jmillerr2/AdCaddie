@@ -20,6 +20,11 @@ export default function LpgaAds() {
   const [dragging, setDragging]   = useState(false)
   const [downloading, setDownloading] = useState(false)
   const fileRef = useRef()
+  const videoFileRef = useRef()
+  const [videoFile, setVideoFile] = useState(null)
+  const [videoDuration, setVideoDuration] = useState('')
+  const [videoUploading, setVideoUploading] = useState(false)
+  const [videoProgress, setVideoProgress] = useState(null)
 
   useEffect(() => {
     const saved = sessionStorage.getItem('ac_admin')
@@ -70,22 +75,7 @@ export default function LpgaAds() {
         const formData = new FormData()
         formData.append('file', file)
 
-        let extraQuery = ''
-        const isVid = /\.(wmv)$/i.test(file.name)
-        if (isVid) {
-          const dims = await getVideoDimensions(file).catch(() => null)
-          let dur = dims?.duration && !isNaN(dims.duration) ? dims.duration : null
-          if (!dur) dur = parseDurationFromFilename(file.name)
-          const w = dims?.width || 0
-          const h = dims?.height || 0
-          extraQuery = `?width=${w}&height=${h}${dur ? `&duration=${dur}` : ''}`
-        }
-
-        const res = await fetch(`/api/lpga/upload${extraQuery}`, {
-          method: 'POST',
-          body: formData
-        })
-
+        const res = await fetch('/api/lpga/upload', { method: 'POST', body: formData })
         const json = await res.json()
         if (!res.ok) {
           updProg[i] = { ...updProg[i], status: 'error', message: json.error }
@@ -104,19 +94,32 @@ export default function LpgaAds() {
     setTimeout(() => setProgress([]), 5000)
   }
 
-  function parseDurationFromFilename(filename) {
-    const m = filename.match(/\((\d+)(?:seconds?|secs?|s)?\)/i)
-    return m ? parseInt(m[1]) : null
-  }
-
-  function getVideoDimensions(file) {
-    return new Promise((resolve, reject) => {
-      const url = URL.createObjectURL(file)
-      const video = document.createElement('video')
-      video.onloadedmetadata = () => { resolve({ width: video.videoWidth, height: video.videoHeight, duration: video.duration }); URL.revokeObjectURL(url) }
-      video.onerror = reject
-      video.src = url
-    })
+  async function handleVideoUpload() {
+    if (!videoFile || !videoDuration) return
+    const duration = parseInt(videoDuration)
+    if (!duration || duration < 1) return
+    setVideoUploading(true)
+    setVideoProgress({ status: 'uploading' })
+    try {
+      const formData = new FormData()
+      formData.append('file', videoFile)
+      const res = await fetch(`/api/lpga/upload?duration=${duration}&width=960&height=540`, {
+        method: 'POST',
+        body: formData
+      })
+      const json = await res.json()
+      if (!res.ok) {
+        setVideoProgress({ status: 'error', message: json.error })
+      } else {
+        setVideoProgress({ status: 'done', ad: json.ad })
+        setVideoFile(null)
+        setVideoDuration('')
+        await loadAds()
+      }
+    } catch (err) {
+      setVideoProgress({ status: 'error', message: err.message })
+    }
+    setVideoUploading(false)
   }
 
   function triggerDownload(blobUrl, filename) {
@@ -264,7 +267,7 @@ export default function LpgaAds() {
               ref={fileRef}
               type="file"
               multiple
-              accept=".jpg,.jpeg,.png,.webp,.wmv,.mp4,.mov"
+              accept=".jpg,.jpeg"
               style={{ display: 'none' }}
               onChange={e => handleFiles(e.target.files)}
             />
@@ -276,8 +279,8 @@ export default function LpgaAds() {
             ) : (
               <>
                 <div className={styles.dzIcon}>🏌️</div>
-                <div className={styles.dzLabel}><strong>Drop LPGA ad files here</strong><br />or click to browse</div>
-                <div className={styles.dzSub}>JPG · PNG · WebP · MP4 · WMV · MOV</div>
+                <div className={styles.dzLabel}><strong>Drop LPGA image ads here</strong><br />or click to browse</div>
+                <div className={styles.dzSub}>JPG · JPEG</div>
               </>
             )}
           </div>
@@ -296,6 +299,57 @@ export default function LpgaAds() {
               ))}
             </div>
           )}
+
+          <div className={styles.videoSection}>
+            <div className={styles.videoSectionTitle}>Video Ad (.wmv)</div>
+            <div className={styles.videoUploadRow}>
+              <input
+                ref={videoFileRef}
+                type="file"
+                accept=".wmv"
+                style={{ display: 'none' }}
+                onChange={e => { setVideoFile(e.target.files[0] || null); setVideoProgress(null) }}
+              />
+              <button
+                className={styles.videoChooseBtn}
+                onClick={() => videoFileRef.current?.click()}
+                disabled={videoUploading}
+              >
+                {videoFile ? videoFile.name : 'Choose .wmv file…'}
+              </button>
+              <input
+                type="number"
+                className={styles.videoDurInput}
+                placeholder="Duration (sec)"
+                min="1"
+                max="999"
+                value={videoDuration}
+                onChange={e => setVideoDuration(e.target.value)}
+                disabled={videoUploading}
+              />
+              <button
+                className={styles.videoUploadBtn}
+                onClick={handleVideoUpload}
+                disabled={!videoFile || !videoDuration || videoUploading}
+              >
+                {videoUploading ? 'Uploading…' : 'Upload Video'}
+              </button>
+            </div>
+            {videoProgress && (
+              <div className={styles.videoProgress}>
+                <span>
+                  {videoProgress.status === 'uploading' ? '⏫' : videoProgress.status === 'done' ? '✓' : '✗'}
+                </span>
+                <span className={styles.videoProgressName}>{videoFile?.name || ''}</span>
+                {videoProgress.status === 'done' && videoProgress.ad &&
+                  <span className={styles.videoProgressOk}>→ {videoProgress.ad.assigned_name} ({videoProgress.ad.sequence_type})</span>
+                }
+                {videoProgress.status === 'error' &&
+                  <span className={styles.videoProgressErr}>{videoProgress.message}</span>
+                }
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Stats row */}

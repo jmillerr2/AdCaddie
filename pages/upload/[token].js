@@ -38,6 +38,11 @@ export default function UploadPortal() {
   const [isComplete, setIsComplete] = useState(false)
   const [completingLoading, setCompletingLoading] = useState(false)
   const fileRef = useRef()
+  const videoFileRef = useRef()
+  const [videoFile, setVideoFile] = useState(null)
+  const [videoDuration, setVideoDuration] = useState('')
+  const [videoUploading, setVideoUploading] = useState(false)
+  const [videoProgress, setVideoProgress] = useState(null)
 
   useEffect(() => {
     if (token) loadTournament()
@@ -81,24 +86,15 @@ export default function UploadPortal() {
 
       try {
         const ext = file.name.split('.').pop().toLowerCase()
-        const isVid = ext === 'wmv'
 
-        // Read dimensions (and duration for videos) client-side
-        let width = 0, height = 0, duration = null
-        if (isVid) {
-          const dims = await getVideoDimensions(file).catch(() => null)
-          if (dims) { width = dims.width; height = dims.height; duration = dims.duration }
-          // WMV files can't be decoded by the browser — fall back to parsing from filename e.g. "ad(30).wmv"
-          if (!duration || isNaN(duration)) duration = parseDurationFromFilename(file.name)
-        } else {
-          const dims = await getImageDimensions(file).catch(() => null)
-          if (dims) { width = dims.width; height = dims.height }
-        }
+        // Read image dimensions client-side
+        let width = 0, height = 0
+        const dims = await getImageDimensions(file).catch(() => null)
+        if (dims) { width = dims.width; height = dims.height }
 
         // Step 1: validate + get signed upload URL from server
-        const durParam = duration != null ? `&duration=${duration}` : ''
         const signRes = await fetch(
-          `/api/upload/${token}?filename=${encodeURIComponent(file.name)}&width=${width}&height=${height}&size=${file.size}${durParam}`
+          `/api/upload/${token}?filename=${encodeURIComponent(file.name)}&width=${width}&height=${height}&size=${file.size}`
         )
         let signJson = {}
         try { signJson = await signRes.json() } catch {
@@ -159,9 +155,57 @@ export default function UploadPortal() {
     setTimeout(() => setUploadProgress([]), 6000)
   }
 
-  function parseDurationFromFilename(filename) {
-    const m = filename.match(/\((\d+)(?:seconds?|secs?|s)?\)/i)
-    return m ? parseInt(m[1]) : null
+  async function handleVideoUpload() {
+    if (!videoFile || !videoDuration) return
+    const duration = parseInt(videoDuration)
+    if (!duration || duration < 1) return
+    setVideoUploading(true)
+    setVideoProgress({ status: 'uploading' })
+    try {
+      const signRes = await fetch(
+        `/api/upload/${token}?filename=${encodeURIComponent(videoFile.name)}&width=960&height=540&size=${videoFile.size}&duration=${duration}`
+      )
+      const signJson = await signRes.json()
+      if (!signRes.ok) {
+        setVideoProgress({ status: 'error', message: signJson.error })
+        setVideoUploading(false)
+        return
+      }
+      const { assignedName, filePath, sequenceType, uploadToken: signedToken, isLate, tournamentId } = signJson
+      const { error: storageErr } = await supabase.storage
+        .from('ads')
+        .uploadToSignedUrl(filePath, signedToken, videoFile, { contentType: 'video/x-ms-wmv' })
+      if (storageErr) {
+        setVideoProgress({ status: 'error', message: storageErr.message })
+        setVideoUploading(false)
+        return
+      }
+      const regRes = await fetch(`/api/upload/${token}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          assignedName, filePath, sequenceType,
+          originalFilename: videoFile.name,
+          width: 960, height: 540,
+          isVideo: true,
+          sizeBytes: videoFile.size,
+          isLate,
+          tournamentId,
+        })
+      })
+      const regJson = await regRes.json()
+      if (!regRes.ok) {
+        setVideoProgress({ status: 'error', message: regJson.error })
+      } else {
+        setVideoProgress({ status: 'done', upload: regJson.upload })
+        setVideoFile(null)
+        setVideoDuration('')
+        await loadTournament()
+      }
+    } catch (err) {
+      setVideoProgress({ status: 'error', message: err.message })
+    }
+    setVideoUploading(false)
   }
 
   function getImageDimensions(file) {
@@ -171,19 +215,6 @@ export default function UploadPortal() {
       img.onload = () => { resolve({ width: img.naturalWidth, height: img.naturalHeight }); URL.revokeObjectURL(url) }
       img.onerror = reject
       img.src = url
-    })
-  }
-
-  function getVideoDimensions(file) {
-    return new Promise((resolve, reject) => {
-      const url = URL.createObjectURL(file)
-      const video = document.createElement('video')
-      video.onloadedmetadata = () => {
-        resolve({ width: video.videoWidth, height: video.videoHeight, duration: video.duration })
-        URL.revokeObjectURL(url)
-      }
-      video.onerror = reject
-      video.src = url
     })
   }
 
@@ -320,7 +351,7 @@ export default function UploadPortal() {
             ))}
           </div>
           <div className={styles.instructNote}>
-            Files are automatically detected and named based on their dimensions. You don&apos;t need to rename anything.
+            Images are automatically sorted by their dimensions — no renaming needed. For video files (.wmv), use the Video Ad section below and enter the duration in seconds.
           </div>
         </div>
 
@@ -336,7 +367,7 @@ export default function UploadPortal() {
             ref={fileRef}
             type="file"
             multiple
-            accept=".jpg,.jpeg,.wmv"
+            accept=".jpg,.jpeg"
             style={{ display: 'none' }}
             onChange={e => handleFiles(e.target.files)}
           />
@@ -348,8 +379,8 @@ export default function UploadPortal() {
           ) : (
             <>
               <div className={styles.dzIcon}>📁</div>
-              <div className={styles.dzLabel}><strong>Drop your ad files here</strong><br />or click to browse</div>
-              <div className={styles.dzSub}>JPG · JPEG · WMV</div>
+              <div className={styles.dzLabel}><strong>Drop your image ads here</strong><br />or click to browse</div>
+              <div className={styles.dzSub}>JPG · JPEG</div>
             </>
           )}
         </div>
@@ -392,6 +423,58 @@ export default function UploadPortal() {
             })}
           </div>
         )}
+
+        {/* Video upload section */}
+        <div className={styles.videoSection}>
+          <div className={styles.videoSectionTitle}>Video Ad (.wmv)</div>
+          <div className={styles.videoUploadRow}>
+            <input
+              ref={videoFileRef}
+              type="file"
+              accept=".wmv"
+              style={{ display: 'none' }}
+              onChange={e => { setVideoFile(e.target.files[0] || null); setVideoProgress(null) }}
+            />
+            <button
+              className={styles.videoChooseBtn}
+              onClick={() => videoFileRef.current?.click()}
+              disabled={videoUploading}
+            >
+              {videoFile ? videoFile.name : 'Choose .wmv file…'}
+            </button>
+            <input
+              type="number"
+              className={styles.videoDurInput}
+              placeholder="Duration (sec)"
+              min="1"
+              max="999"
+              value={videoDuration}
+              onChange={e => setVideoDuration(e.target.value)}
+              disabled={videoUploading}
+            />
+            <button
+              className={styles.videoUploadBtn}
+              onClick={handleVideoUpload}
+              disabled={!videoFile || !videoDuration || videoUploading}
+            >
+              {videoUploading ? 'Uploading…' : 'Upload Video'}
+            </button>
+          </div>
+          {videoProgress && (
+            <div className={styles.videoProgress}>
+              <span>
+                {videoProgress.status === 'uploading' ? '⏫' : videoProgress.status === 'done' ? '✓' : '✗'}
+              </span>
+              <span className={styles.videoProgressName}>{videoFile?.name || ''}</span>
+              {videoProgress.status === 'done' && videoProgress.upload &&
+                <span className={styles.videoProgressOk}>→ {videoProgress.upload.assigned_name} ({videoProgress.upload.sequence_type})</span>
+              }
+              {videoProgress.status === 'error' &&
+                <span className={styles.videoProgressErr}>{videoProgress.message}</span>
+              }
+            </div>
+          )}
+        </div>
 
         {/* Uploaded files by slot */}
         {SLOT_DEFS.map(slot => {

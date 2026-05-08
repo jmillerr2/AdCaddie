@@ -388,6 +388,92 @@
 }
 .headerUnmarkBtn:hover { background: var(--surface2); color: var(--text); }
 
+/* ── VIDEO UPLOAD ── */
+.videoSection {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1.5rem;
+  box-shadow: var(--shadow-sm);
+}
+.videoSectionTitle {
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent);
+  margin-bottom: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.videoUploadRow {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.videoChooseBtn {
+  flex: 1;
+  min-width: 160px;
+  height: 38px;
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius);
+  font-size: 13px;
+  font-family: 'DM Mono', monospace;
+  color: var(--text);
+  cursor: pointer;
+  padding: 0 12px;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: border-color 0.15s;
+}
+.videoChooseBtn:hover:not(:disabled) { border-color: var(--accent); }
+.videoChooseBtn:disabled { opacity: 0.5; cursor: not-allowed; }
+.videoDurInput {
+  width: 140px;
+  height: 38px;
+  border: 1px solid var(--border2);
+  border-radius: var(--radius);
+  padding: 0 12px;
+  font-size: 13px;
+  font-family: 'DM Mono', monospace;
+  background: var(--surface2);
+  color: var(--text);
+  outline: none;
+  transition: border-color 0.15s;
+}
+.videoDurInput:focus { border-color: var(--accent); }
+.videoDurInput:disabled { opacity: 0.5; }
+.videoUploadBtn {
+  height: 38px;
+  padding: 0 18px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius);
+  font-size: 13px;
+  font-weight: 700;
+  font-family: 'Inter', sans-serif;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s, opacity 0.15s;
+}
+.videoUploadBtn:hover:not(:disabled) { background: var(--accent-h); }
+.videoUploadBtn:disabled { opacity: 0.4; cursor: not-allowed; }
+.videoProgress {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+  font-size: 13px;
+  font-family: 'DM Mono', monospace;
+}
+.videoProgressName { color: var(--text); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.videoProgressOk   { color: var(--accent); font-size: 12px; white-space: nowrap; }
+.videoProgressErr  { color: var(--danger); font-size: 12px; }
+
 /* ── FOOTER ── */
 .footer {
   text-align: center;
