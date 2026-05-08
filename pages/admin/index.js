@@ -10,7 +10,8 @@ const SLOTS = [
   { type: 'Ticker',      label: 'Ticker',        short: 'T',  color: '#7c3aed', dim: '1280×60' },
 ]
 
-function getStatus(uploads) {
+function getStatus(uploads, isComplete) {
+  if (isComplete) return 'complete'
   const total = (uploads || []).length
   if (total === 0) return 'empty'
   const hasAll = SLOTS.every(s => (uploads || []).some(u => u.sequence_type === s.type))
@@ -300,14 +301,14 @@ export default function Admin() {
   }
 
   const filtered = tournaments.filter(t =>
-    filter === 'all' ? true : getStatus(t.uploads) === filter
+    filter === 'all' ? true : getStatus(t.uploads, t.is_complete) === filter
   )
 
   const stats = {
     total:    tournaments.length,
-    complete: tournaments.filter(t => getStatus(t.uploads) === 'complete').length,
-    progress: tournaments.filter(t => getStatus(t.uploads) === 'progress').length,
-    empty:    tournaments.filter(t => getStatus(t.uploads) === 'empty').length,
+    complete: tournaments.filter(t => getStatus(t.uploads, t.is_complete) === 'complete').length,
+    progress: tournaments.filter(t => getStatus(t.uploads, t.is_complete) === 'progress').length,
+    empty:    tournaments.filter(t => getStatus(t.uploads, t.is_complete) === 'empty').length,
     files:    tournaments.reduce((acc, t) => acc + (t.uploads || []).length, 0),
   }
 
@@ -462,7 +463,7 @@ export default function Admin() {
 
         {/* Tournament cards */}
         {!loading && filtered.map(t => {
-          const status     = getStatus(t.uploads)
+          const status     = getStatus(t.uploads, t.is_complete)
           const isOpen     = expanded[t.id]
           const totalFiles = (t.uploads || []).length
           const selSet     = selectedFiles[t.id] || new Set()
