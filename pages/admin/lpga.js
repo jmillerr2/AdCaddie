@@ -105,7 +105,7 @@ export default function LpgaAds() {
   }
 
   function parseDurationFromFilename(filename) {
-    const m = filename.match(/\((\d+)s?\)/)
+    const m = filename.match(/\((\d+)(?:seconds?|secs?|s)?\)/i)
     return m ? parseInt(m[1]) : null
   }
 

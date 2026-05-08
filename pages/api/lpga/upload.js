@@ -122,7 +122,7 @@ export default async function handler(req, res) {
   // Include duration suffix for videos: C-01(30s)
   let durationSec = isVideo ? parseFloat(req.query.duration) : null
   if (isVideo && (!durationSec || isNaN(durationSec))) {
-    const m = filename.match(/\((\d+)s?\)/)
+    const m = filename.match(/\((\d+)(?:seconds?|secs?|s)?\)/i)
     if (m) durationSec = parseInt(m[1])
   }
   const dur = (isVideo && durationSec) ? `(${Math.round(durationSec)}s)` : ''
