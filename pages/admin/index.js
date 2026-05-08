@@ -86,6 +86,7 @@ export default function Admin() {
   const [downloading, setDownloading] = useState(null)
   const [activityLog, setActivityLog] = useState([])
   const [activityFilter, setActivityFilter] = useState('all')
+  const [selectedFiles, setSelectedFiles] = useState({})
 
   useEffect(() => {
     const saved = sessionStorage.getItem('ac_admin')
@@ -222,40 +223,73 @@ export default function Admin() {
     setPreviewLoading(false)
   }
 
-  async function downloadFiles(tournament) {
+  async function downloadSelected(tournament) {
+    const ids = selectedFiles[tournament.id] || new Set()
+    const uploads = (tournament.uploads || []).filter(u => ids.has(u.id))
+    if (!uploads.length) return
+
     setDownloading(tournament.id)
     try {
-      const { data: uploads } = await supabase
-        .from('uploads').select('*').eq('tournament_id', tournament.id)
-      if (!uploads?.length) return
-
-      const JSZip = (await import('jszip')).default
-      const zip = new JSZip()
-      const folder = zip.folder(tournament.name)
-
-      for (const u of uploads) {
-        try {
-          const res = await fetch(u.file_url)
-          const blob = await res.blob()
-          const ext = u.original_filename.split('.').pop()
-          folder.file(`${u.assigned_name}.${ext}`, blob)
-        } catch { /* skip files that fail to fetch */ }
+      if (uploads.length === 1) {
+        const u = uploads[0]
+        const res = await fetch(u.file_url)
+        const blob = await res.blob()
+        const ext = u.original_filename.split('.').pop()
+        const a = document.createElement('a')
+        a.href = URL.createObjectURL(blob)
+        a.download = `${u.assigned_name}.${ext}`
+        a.click()
+        URL.revokeObjectURL(a.href)
+      } else {
+        const JSZip = (await import('jszip')).default
+        const zip = new JSZip()
+        const folder = zip.folder(tournament.name)
+        for (const u of uploads) {
+          try {
+            const res = await fetch(u.file_url)
+            const blob = await res.blob()
+            const ext = u.original_filename.split('.').pop()
+            folder.file(`${u.assigned_name}.${ext}`, blob)
+          } catch { /* skip */ }
+        }
+        const content = await zip.generateAsync({ type: 'blob' })
+        const a = document.createElement('a')
+        a.href = URL.createObjectURL(content)
+        a.download = `${tournament.name}.zip`
+        a.click()
+        URL.revokeObjectURL(a.href)
       }
-
-      const content = await zip.generateAsync({ type: 'blob' })
-      const url = URL.createObjectURL(content)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `${tournament.name}.zip`
-      a.click()
-      URL.revokeObjectURL(url)
     } finally {
       setDownloading(null)
     }
   }
 
-  function toggleExpand(id) {
-    setExpanded(prev => ({ ...prev, [id]: !prev[id] }))
+  function toggleFileSelect(tournId, uploadId) {
+    setSelectedFiles(prev => {
+      const set = new Set(prev[tournId] || [])
+      if (set.has(uploadId)) set.delete(uploadId)
+      else set.add(uploadId)
+      return { ...prev, [tournId]: set }
+    })
+  }
+
+  function selectAll(tournament) {
+    const ids = new Set((tournament.uploads || []).map(u => u.id))
+    setSelectedFiles(prev => ({ ...prev, [tournament.id]: ids }))
+  }
+
+  function deselectAll(tournId) {
+    setSelectedFiles(prev => ({ ...prev, [tournId]: new Set() }))
+  }
+
+  function toggleExpand(id, uploads) {
+    setExpanded(prev => {
+      const willOpen = !prev[id]
+      if (willOpen) {
+        setSelectedFiles(sf => ({ ...sf, [id]: new Set((uploads || []).map(u => u.id)) }))
+      }
+      return { ...prev, [id]: willOpen }
+    })
   }
 
   const filtered = tournaments.filter(t =>
@@ -424,6 +458,8 @@ export default function Admin() {
           const status     = getStatus(t.uploads)
           const isOpen     = expanded[t.id]
           const totalFiles = (t.uploads || []).length
+          const selSet     = selectedFiles[t.id] || new Set()
+          const selCount   = selSet.size
           const lateFiles  = (t.uploads || []).filter(u => u.is_late).length
           const isPastDeadline = t.deadline && new Date() > new Date(t.deadline)
 
@@ -465,7 +501,7 @@ export default function Admin() {
                     </button>
                     <button
                       className={styles.expandBtn}
-                      onClick={() => toggleExpand(t.id)}
+                      onClick={() => toggleExpand(t.id, t.uploads)}
                       aria-label={isOpen ? 'Collapse' : 'Expand files'}
                     >
                       {isOpen ? '▲' : '▼'}
@@ -506,6 +542,13 @@ export default function Admin() {
               {/* File gallery */}
               {isOpen && (
                 <div className={styles.fileGallery}>
+                  {totalFiles > 0 && (
+                    <div className={styles.galleryToolbar}>
+                      <span className={styles.selectedCount}>{selCount} of {totalFiles} selected</span>
+                      <button className={styles.selectAllBtn} onClick={() => selectAll(t)}>Select All</button>
+                      <button className={styles.selectAllBtn} onClick={() => deselectAll(t.id)}>Deselect All</button>
+                    </div>
+                  )}
                   {SLOTS.map(s => {
                     const slotUps = (t.uploads || []).filter(u => u.sequence_type === s.type)
                     if (slotUps.length === 0) return null
@@ -517,24 +560,39 @@ export default function Admin() {
                           <span className={styles.fileGroupDim}>· {slotUps.length} file{slotUps.length !== 1 ? 's' : ''}</span>
                         </div>
                         <div className={styles.fileGalleryGrid}>
-                          {slotUps.map(u => (
-                            <div key={u.id} className={styles.fileGalleryCard} style={{ borderColor: s.color + '40' }}>
-                              <div className={styles.fileGalleryThumb}>
-                                {u.is_video
-                                  ? <div className={styles.videoThumb}>▶</div>
-                                  : <img src={u.file_url} alt={u.assigned_name} className={styles.fileGalleryImg} />
-                                }
-                              </div>
-                              <div className={styles.fileGalleryInfo}>
-                                <div className={styles.fileAssigned} style={{ color: s.color }}>
-                                  {u.assigned_name}
-                                  {u.is_late && <span className={styles.lateBadge}>Late</span>}
+                          {slotUps.map(u => {
+                            const isSel = selSet.has(u.id)
+                            return (
+                              <div
+                                key={u.id}
+                                className={`${styles.fileGalleryCard} ${isSel ? styles.fileGalleryCardSelected : ''}`}
+                                style={{ borderColor: isSel ? s.color : s.color + '40' }}
+                                onClick={() => toggleFileSelect(t.id, u.id)}
+                              >
+                                <input
+                                  type="checkbox"
+                                  className={styles.fileCheckbox}
+                                  checked={isSel}
+                                  onChange={() => toggleFileSelect(t.id, u.id)}
+                                  onClick={e => e.stopPropagation()}
+                                />
+                                <div className={styles.fileGalleryThumb}>
+                                  {u.is_video
+                                    ? <div className={styles.videoThumb}>▶</div>
+                                    : <img src={u.file_url} alt={u.assigned_name} className={styles.fileGalleryImg} />
+                                  }
                                 </div>
-                                <div className={styles.fileOrig}>{u.original_filename}</div>
-                                <div className={styles.fileDims}>{u.width}×{u.height} · {Math.round((u.size_bytes || 0) / 1024)} KB</div>
+                                <div className={styles.fileGalleryInfo}>
+                                  <div className={styles.fileAssigned} style={{ color: s.color }}>
+                                    {u.assigned_name}
+                                    {u.is_late && <span className={styles.lateBadge}>Late</span>}
+                                  </div>
+                                  <div className={styles.fileOrig}>{u.original_filename}</div>
+                                  <div className={styles.fileDims}>{u.width}×{u.height} · {Math.round((u.size_bytes || 0) / 1024)} KB</div>
+                                </div>
                               </div>
-                            </div>
-                          ))}
+                            )
+                          })}
                         </div>
                       </div>
                     )
@@ -557,8 +615,8 @@ export default function Admin() {
                 <button className={styles.btnAccentSm} onClick={() => exportJSON(t, 'both')} disabled={!!exporting || totalFiles === 0}>
                   {exporting === `${t.id}-both` ? '…' : '⬇ Both'}
                 </button>
-                <button className={styles.btnExport} onClick={() => downloadFiles(t)} disabled={downloading === t.id || totalFiles === 0}>
-                  {downloading === t.id ? '⏳ Zipping…' : '⬇ Files (.zip)'}
+                <button className={styles.btnExport} onClick={() => downloadSelected(t)} disabled={downloading === t.id || selCount === 0}>
+                  {downloading === t.id ? '⏳ Downloading…' : `⬇ Files${selCount > 0 ? ` (${selCount})` : ''}`}
                 </button>
               </div>
             </div>

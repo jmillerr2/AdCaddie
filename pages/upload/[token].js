@@ -225,7 +225,7 @@ export default function UploadPortal() {
             ref={fileRef}
             type="file"
             multiple
-            accept=".jpg,.jpeg,.png,.webp,.wmv,.mp4,.mov"
+            accept=".jpg,.jpeg,.wmv"
             style={{ display: 'none' }}
             onChange={e => handleFiles(e.target.files)}
           />

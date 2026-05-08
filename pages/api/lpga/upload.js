@@ -70,8 +70,6 @@ async function getImageDimensions(buffer) {
   }
 }
 
-const VIDEO_EXTS = ['wmv', 'mp4', 'mov', 'avi', 'mpg', 'mpeg']
-
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end()
 
@@ -86,7 +84,11 @@ export default async function handler(req, res) {
 
   const { filename, type: mimeType, body: fileBuffer } = filePart
   const ext     = filename.split('.').pop().toLowerCase()
-  const isVideo = VIDEO_EXTS.includes(ext)
+  const isVideo = ext === 'wmv'
+
+  if (!['jpg', 'jpeg', 'wmv'].includes(ext)) {
+    return res.status(422).json({ error: `File type ".${ext}" is not accepted. Only .jpg, .jpeg (images) and .wmv (videos) are allowed.` })
+  }
 
   let width = 0, height = 0, sequenceType = null
 

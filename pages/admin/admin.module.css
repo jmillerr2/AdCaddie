@@ -476,6 +476,48 @@
   font-weight: 700;
 }
 
+/* ── GALLERY TOOLBAR ── */
+.galleryToolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0 10px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 12px;
+}
+.selectedCount {
+  font-size: 12px;
+  color: var(--muted);
+  font-family: 'DM Mono', monospace;
+  margin-right: auto;
+}
+.selectAllBtn {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border2);
+  background: var(--surface);
+  color: var(--muted);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.selectAllBtn:hover { background: var(--surface2); color: var(--text); }
+
+.fileGalleryCardSelected {
+  box-shadow: 0 0 0 2px currentColor;
+}
+.fileCheckbox {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  width: 15px;
+  height: 15px;
+  cursor: pointer;
+  accent-color: var(--accent);
+  z-index: 1;
+}
+
 /* ── FILE GALLERY ── */
 .fileGallery {
   background: var(--surface2);
@@ -514,11 +556,13 @@
   gap: 10px;
 }
 .fileGalleryCard {
+  position: relative;
+  cursor: pointer;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   overflow: hidden;
-  transition: box-shadow 0.15s;
+  transition: box-shadow 0.15s, border-color 0.15s;
 }
 .fileGalleryCard:hover { box-shadow: var(--shadow); }
 .fileGalleryThumb {
