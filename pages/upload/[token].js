@@ -186,6 +186,25 @@ export default function UploadPortal() {
             <div className={styles.tournName}>{tournament.name}</div>
             <div className={styles.tournSub}>Ad Upload Portal</div>
           </div>
+          <div className={styles.headerRight}>
+            {isComplete ? (
+              <div className={styles.headerCompleteWrap}>
+                <span className={styles.headerCompleteBadge}>✓ Uploads complete</span>
+                <button className={styles.headerUnmarkBtn} onClick={toggleComplete} disabled={completingLoading}>
+                  {completingLoading ? '…' : 'Unmark'}
+                </button>
+              </div>
+            ) : (
+              <button
+                className={styles.headerCompleteBtn}
+                onClick={toggleComplete}
+                disabled={completingLoading || uploads.length === 0}
+                title={uploads.length === 0 ? 'Upload at least one file first' : 'Mark uploads as complete'}
+              >
+                {completingLoading ? 'Saving…' : '✓ Mark complete'}
+              </button>
+            )}
+          </div>
         </div>
       </header>
 
@@ -360,15 +379,6 @@ export default function UploadPortal() {
             <div className={styles.emptyIcon}>📂</div>
             <div className={styles.emptyText}>No files uploaded yet</div>
             <div className={styles.emptySub}>Drop your ad files above to get started</div>
-          </div>
-        )}
-
-        {!isComplete && (
-          <div className={styles.markCompleteRow}>
-            <button className={styles.markCompleteBtn} onClick={toggleComplete} disabled={completingLoading || uploads.length === 0}>
-              {completingLoading ? 'Saving…' : '✓ Mark uploads as complete'}
-            </button>
-            {uploads.length === 0 && <span className={styles.markCompleteHint}>Upload at least one file to mark complete</span>}
           </div>
         )}
 
