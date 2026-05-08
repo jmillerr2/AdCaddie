@@ -174,7 +174,7 @@ export default function Admin() {
     setExporting(`${tournament.id}-${type}`)
     const [{ data: uploads }, { data: lpgaAds }] = await Promise.all([
       supabase.from('uploads').select('*').eq('tournament_id', tournament.id),
-      supabase.from('lpga_ads').select('*').eq('is_active', true).order('assigned_name', { ascending: true }),
+      supabase.from('lpga_ads').select('*').neq('is_active', false).order('assigned_name', { ascending: true }),
     ])
     const { generateElementsJSON, generateSequencesJSON } = await import('../../lib/generator')
     if (type === 'elements') {
@@ -212,7 +212,7 @@ export default function Admin() {
     setPreviewLoading(true)
     const [{ data: uploads }, { data: lpgaAds }] = await Promise.all([
       supabase.from('uploads').select('*').eq('tournament_id', tournament.id),
-      supabase.from('lpga_ads').select('*').eq('is_active', true).order('assigned_name', { ascending: true }),
+      supabase.from('lpga_ads').select('*').neq('is_active', false).order('assigned_name', { ascending: true }),
     ])
     const { generateElementsJSON, generateSequencesJSON } = await import('../../lib/generator')
     const elements  = generateElementsJSON(uploads || [], lpgaAds || [])
