@@ -126,7 +126,7 @@ export default function UploadPortal() {
             assignedName, filePath, sequenceType,
             originalFilename: file.name,
             width, height,
-            isVideo: isVid,
+            isVideo: false,
             sizeBytes: file.size,
             isLate,
             tournamentId,
