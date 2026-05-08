@@ -119,15 +119,26 @@ export default function LpgaAds() {
     })
   }
 
-  async function downloadAd(ad) {
-    const res = await fetch(ad.file_url)
-    const blob = await res.blob()
-    const ext = (ad.original_filename || ad.assigned_name).split('.').pop()
+  function triggerDownload(blobUrl, filename) {
     const a = document.createElement('a')
-    a.href = URL.createObjectURL(blob)
-    a.download = `${ad.assigned_name}.${ext}`
+    a.href = blobUrl
+    a.download = filename
+    document.body.appendChild(a)
     a.click()
-    URL.revokeObjectURL(a.href)
+    document.body.removeChild(a)
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 10000)
+  }
+
+  async function downloadAd(ad) {
+    try {
+      const res = await fetch(ad.file_url)
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const blob = await res.blob()
+      const ext = (ad.original_filename || ad.assigned_name).split('.').pop()
+      triggerDownload(URL.createObjectURL(blob), `${ad.assigned_name}.${ext}`)
+    } catch (err) {
+      alert(`Download failed: ${err.message}`)
+    }
   }
 
   async function downloadAll() {
@@ -137,20 +148,21 @@ export default function LpgaAds() {
       const JSZip = (await import('jszip')).default
       const zip = new JSZip()
       const folder = zip.folder('LPGA-Ads')
-      for (const ad of ads) {
-        try {
+      const results = await Promise.allSettled(
+        ads.map(async ad => {
           const res = await fetch(ad.file_url)
+          if (!res.ok) throw new Error(`HTTP ${res.status}`)
           const blob = await res.blob()
           const ext = (ad.original_filename || '').split('.').pop() || 'jpg'
           folder.file(`${ad.assigned_name}.${ext}`, blob)
-        } catch { /* skip */ }
-      }
+        })
+      )
+      const failed = results.filter(r => r.status === 'rejected').length
+      if (failed === ads.length) throw new Error('All file fetches failed — check Supabase bucket CORS settings.')
       const content = await zip.generateAsync({ type: 'blob' })
-      const a = document.createElement('a')
-      a.href = URL.createObjectURL(content)
-      a.download = 'LPGA-Ads.zip'
-      a.click()
-      URL.revokeObjectURL(a.href)
+      triggerDownload(URL.createObjectURL(content), 'LPGA-Ads.zip')
+    } catch (err) {
+      alert(`Download failed: ${err.message}`)
     } finally {
       setDownloading(false)
     }

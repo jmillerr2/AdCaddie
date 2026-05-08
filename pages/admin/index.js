@@ -231,6 +231,22 @@ export default function Admin() {
     setPreviewLoading(false)
   }
 
+  function triggerDownload(blobUrl, filename) {
+    const a = document.createElement('a')
+    a.href = blobUrl
+    a.download = filename
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 10000)
+  }
+
+  async function fetchFileBlob(url) {
+    const res = await fetch(url)
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    return res.blob()
+  }
+
   async function downloadSelected(tournament) {
     const ids = selectedFiles[tournament.id] || new Set()
     const uploads = (tournament.uploads || []).filter(u => ids.has(u.id))
@@ -240,33 +256,27 @@ export default function Admin() {
     try {
       if (uploads.length === 1) {
         const u = uploads[0]
-        const res = await fetch(u.file_url)
-        const blob = await res.blob()
+        const blob = await fetchFileBlob(u.file_url)
         const ext = u.original_filename.split('.').pop()
-        const a = document.createElement('a')
-        a.href = URL.createObjectURL(blob)
-        a.download = `${u.assigned_name}.${ext}`
-        a.click()
-        URL.revokeObjectURL(a.href)
+        triggerDownload(URL.createObjectURL(blob), `${u.assigned_name}.${ext}`)
       } else {
         const JSZip = (await import('jszip')).default
         const zip = new JSZip()
         const folder = zip.folder(tournament.name)
-        for (const u of uploads) {
-          try {
-            const res = await fetch(u.file_url)
-            const blob = await res.blob()
+        const results = await Promise.allSettled(
+          uploads.map(async u => {
+            const blob = await fetchFileBlob(u.file_url)
             const ext = u.original_filename.split('.').pop()
             folder.file(`${u.assigned_name}.${ext}`, blob)
-          } catch { /* skip */ }
-        }
+          })
+        )
+        const failed = results.filter(r => r.status === 'rejected').length
+        if (failed === uploads.length) throw new Error('All file fetches failed — check Supabase bucket CORS settings.')
         const content = await zip.generateAsync({ type: 'blob' })
-        const a = document.createElement('a')
-        a.href = URL.createObjectURL(content)
-        a.download = `${tournament.name}.zip`
-        a.click()
-        URL.revokeObjectURL(a.href)
+        triggerDownload(URL.createObjectURL(content), `${tournament.name}.zip`)
       }
+    } catch (err) {
+      alert(`Download failed: ${err.message}`)
     } finally {
       setDownloading(null)
     }
