@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
+import { supabase } from '../../lib/supabase'
 import styles from './lpga.module.css'
 
 const SLOTS = [
@@ -120,16 +121,31 @@ export default function LpgaAds() {
       setVideoItems(prev => prev.map((it, i) => i === idx ? { ...it, status: 'uploading' } : it))
 
       try {
-        const formData = new FormData()
-        formData.append('file', item.file)
-        const res = await fetch(`/api/lpga/upload?duration=${duration}&width=960&height=540`, {
-          method: 'POST',
-          body: formData
-        })
-        const json = await res.json()
-        if (!res.ok) throw new Error(json.error)
+        // Step 1: get signed upload URL (no file sent to server)
+        const signRes = await fetch(
+          `/api/lpga/video?filename=${encodeURIComponent(item.file.name)}&duration=${duration}&width=960&height=540&size=${item.file.size}`
+        )
+        const signJson = await signRes.json()
+        if (!signRes.ok) throw new Error(signJson.error)
 
-        setVideoItems(prev => prev.map((it, i) => i === idx ? { ...it, status: 'done', assignedName: json.ad.assigned_name } : it))
+        const { assignedName, filePath, uploadToken, sequenceType, width, height } = signJson
+
+        // Step 2: upload directly to Supabase Storage (bypasses Vercel size limit)
+        const { error: storageErr } = await supabase.storage
+          .from('ads')
+          .uploadToSignedUrl(filePath, uploadToken, item.file, { contentType: 'video/x-ms-wmv' })
+        if (storageErr) throw new Error(storageErr.message)
+
+        // Step 3: register in DB
+        const regRes = await fetch('/api/lpga/video', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ assignedName, filePath, originalFilename: item.file.name, sequenceType, width, height, sizeBytes: item.file.size })
+        })
+        const regJson = await regRes.json()
+        if (!regRes.ok) throw new Error(regJson.error)
+
+        setVideoItems(prev => prev.map((it, i) => i === idx ? { ...it, status: 'done', assignedName: regJson.ad.assigned_name } : it))
       } catch (err) {
         setVideoItems(prev => prev.map((it, i) => i === idx ? { ...it, status: 'error', message: err.message } : it))
       }
