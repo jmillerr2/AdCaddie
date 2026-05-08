@@ -17,7 +17,7 @@
 .headerLeft { display: flex; align-items: center; gap: 12px; }
 .logoMark { font-size: 26px; }
 .logoText {
-  font-family: 'Syne', sans-serif;
+  font-family: 'Inter', sans-serif;
   font-weight: 800;
   font-size: 22px;
   color: var(--accent);
@@ -46,7 +46,7 @@
   align-items: center;
   gap: 6px;
   transition: all 0.15s;
-  font-family: 'DM Sans', sans-serif;
+  font-family: 'Inter', sans-serif;
 }
 .backBtn:hover { color: var(--text); border-color: var(--accent); }
 
@@ -55,7 +55,7 @@
 /* ── PAGE HEADER ── */
 .pageHeader { margin-bottom: 1.75rem; }
 .pageTitle {
-  font-family: 'Syne', sans-serif;
+  font-family: 'Inter', sans-serif;
   font-size: 22px;
   font-weight: 800;
   color: var(--text);
@@ -73,7 +73,7 @@
   box-shadow: var(--shadow-sm);
 }
 .cardTitle {
-  font-family: 'Syne', sans-serif;
+  font-family: 'Inter', sans-serif;
   font-size: 13px;
   font-weight: 700;
   color: var(--lpga);
@@ -161,7 +161,7 @@
   margin-bottom: 1rem;
 }
 .slotTitle {
-  font-family: 'Syne', sans-serif;
+  font-family: 'Inter', sans-serif;
   font-size: 15px;
   font-weight: 700;
   display: flex;
@@ -241,7 +241,7 @@
   border-radius: var(--radius);
   font-size: 11px;
   font-weight: 600;
-  font-family: 'DM Sans', sans-serif;
+  font-family: 'Inter', sans-serif;
   cursor: pointer;
   transition: all 0.15s;
   border: 1px solid;
@@ -328,7 +328,7 @@
   font-size: 15px;
   background: var(--surface2);
   color: var(--text);
-  font-family: 'DM Sans', sans-serif;
+  font-family: 'Inter', sans-serif;
   text-align: center;
   letter-spacing: 0.1em;
   outline: none;
@@ -344,7 +344,7 @@
   border-radius: var(--radius);
   font-size: 14px;
   font-weight: 700;
-  font-family: 'Syne', sans-serif;
+  font-family: 'Inter', sans-serif;
   cursor: pointer;
   transition: background 0.15s;
 }

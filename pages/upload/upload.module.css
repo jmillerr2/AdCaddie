@@ -21,7 +21,7 @@
 .logo { display: flex; align-items: center; gap: 10px; }
 .logoMark { font-size: 22px; }
 .logoText {
-  font-family: 'Syne', sans-serif;
+  font-family: 'Inter', sans-serif;
   font-weight: 800;
   font-size: 18px;
   color: var(--accent);
@@ -29,7 +29,7 @@
 }
 .tournInfo { margin-left: auto; text-align: right; }
 .tournName {
-  font-family: 'Syne', sans-serif;
+  font-family: 'Inter', sans-serif;
   font-size: 14px;
   font-weight: 600;
   color: var(--text);
@@ -53,7 +53,7 @@
 .deadlineBannerIcon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
 .deadlineBannerText { flex: 1; }
 .deadlineBannerTitle {
-  font-family: 'Syne', sans-serif;
+  font-family: 'Inter', sans-serif;
   font-size: 14px;
   font-weight: 700;
   color: #9a3412;
@@ -85,7 +85,7 @@
   box-shadow: var(--shadow-sm);
 }
 .instructTitle {
-  font-family: 'Syne', sans-serif;
+  font-family: 'Inter', sans-serif;
   font-size: 15px;
   font-weight: 700;
   margin-bottom: 1rem;
@@ -106,7 +106,7 @@
   transition: border-color 0.2s;
 }
 .instructIcon { font-size: 22px; margin-bottom: 6px; }
-.instructLabel { font-family: 'Syne', sans-serif; font-size: 12px; font-weight: 600; margin-bottom: 4px; }
+.instructLabel { font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 600; margin-bottom: 4px; }
 .instructSize { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--muted); margin-bottom: 3px; }
 .instructAccepts { font-size: 11px; color: var(--muted); }
 .instructNote {
@@ -188,7 +188,7 @@
   font-size: 11px;
   color: #7f1d1d;
   line-height: 1.6;
-  font-family: 'DM Sans', sans-serif;
+  font-family: 'Inter', sans-serif;
 }
 .dimErrorHelp strong { font-family: 'DM Mono', monospace; color: #991b1b; }
 
@@ -198,7 +198,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-family: 'Syne', sans-serif;
+  font-family: 'Inter', sans-serif;
   font-size: 14px;
   font-weight: 600;
   margin-bottom: 10px;
@@ -281,7 +281,7 @@
 /* ── EMPTY STATE ── */
 .emptyState { text-align: center; padding: 4rem 2rem; }
 .emptyIcon { font-size: 48px; margin-bottom: 12px; opacity: 0.3; }
-.emptyText { font-family: 'Syne', sans-serif; font-size: 18px; font-weight: 600; color: var(--muted); margin-bottom: 6px; }
+.emptyText { font-family: 'Inter', sans-serif; font-size: 18px; font-weight: 600; color: var(--muted); margin-bottom: 6px; }
 .emptySub { font-size: 13px; color: var(--border2); }
 
 /* ── CENTER WRAP ── */
@@ -297,7 +297,7 @@
 }
 .loadingText { color: var(--muted); font-size: 14px; }
 .notFoundIcon { font-size: 48px; margin-bottom: 8px; }
-.notFoundTitle { font-family: 'Syne', sans-serif; font-size: 22px; font-weight: 700; color: var(--text); }
+.notFoundTitle { font-family: 'Inter', sans-serif; font-size: 22px; font-weight: 700; color: var(--text); }
 .notFoundSub { font-size: 14px; color: var(--muted); max-width: 380px; }
 
 /* ── FOOTER ── */
