@@ -172,16 +172,18 @@ export default function Admin() {
 
   async function exportJSON(tournament, type) {
     setExporting(`${tournament.id}-${type}`)
-    const { data: uploads } = await supabase
-      .from('uploads').select('*').eq('tournament_id', tournament.id)
+    const [{ data: uploads }, { data: lpgaAds }] = await Promise.all([
+      supabase.from('uploads').select('*').eq('tournament_id', tournament.id),
+      supabase.from('lpga_ads').select('*').eq('is_active', true).order('assigned_name', { ascending: true }),
+    ])
     const { generateElementsJSON, generateSequencesJSON } = await import('../../lib/generator')
     if (type === 'elements') {
-      downloadJSON(generateElementsJSON(uploads || []), `${tournament.name}-elements.json`)
+      downloadJSON(generateElementsJSON(uploads || [], lpgaAds || []), `${tournament.name}-elements.json`)
     } else if (type === 'sequences') {
-      downloadJSON(generateSequencesJSON(uploads || []), `${tournament.name}-sequences.json`)
+      downloadJSON(generateSequencesJSON(uploads || [], lpgaAds || []), `${tournament.name}-sequences.json`)
     } else {
-      downloadJSON(generateElementsJSON(uploads || []), `${tournament.name}-elements.json`)
-      setTimeout(() => downloadJSON(generateSequencesJSON(uploads || []), `${tournament.name}-sequences.json`), 400)
+      downloadJSON(generateElementsJSON(uploads || [], lpgaAds || []), `${tournament.name}-elements.json`)
+      setTimeout(() => downloadJSON(generateSequencesJSON(uploads || [], lpgaAds || []), `${tournament.name}-sequences.json`), 400)
     }
 
     // Log the export
@@ -208,11 +210,13 @@ export default function Admin() {
 
   async function openPreview(tournament) {
     setPreviewLoading(true)
-    const { data: uploads } = await supabase
-      .from('uploads').select('*').eq('tournament_id', tournament.id)
+    const [{ data: uploads }, { data: lpgaAds }] = await Promise.all([
+      supabase.from('uploads').select('*').eq('tournament_id', tournament.id),
+      supabase.from('lpga_ads').select('*').eq('is_active', true).order('assigned_name', { ascending: true }),
+    ])
     const { generateElementsJSON, generateSequencesJSON } = await import('../../lib/generator')
-    const elements  = generateElementsJSON(uploads || [])
-    const sequences = generateSequencesJSON(uploads || [])
+    const elements  = generateElementsJSON(uploads || [], lpgaAds || [])
+    const sequences = generateSequencesJSON(uploads || [], lpgaAds || [])
     setPreview({ tournament, elements, sequences, tab: 'elements' })
     setPreviewLoading(false)
   }
