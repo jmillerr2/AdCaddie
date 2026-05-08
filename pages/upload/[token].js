@@ -35,6 +35,8 @@ export default function UploadPortal() {
   const [dragging, setDragging]     = useState(false)
   const [uploading, setUploading]   = useState(false)
   const [uploadProgress, setUploadProgress] = useState([])
+  const [isComplete, setIsComplete] = useState(false)
+  const [completingLoading, setCompletingLoading] = useState(false)
   const fileRef = useRef()
 
   useEffect(() => {
@@ -45,12 +47,13 @@ export default function UploadPortal() {
     setLoading(true)
     const { data: t, error } = await supabase
       .from('tournaments')
-      .select('id, name, notes, deadline, created_at')
+      .select('id, name, notes, deadline, created_at, is_complete')
       .eq('upload_token', token)
       .single()
 
     if (error || !t) { setNotFound(true); setLoading(false); return }
     setTournament(t)
+    setIsComplete(!!t.is_complete)
 
     const { data: ups } = await supabase
       .from('uploads')
@@ -129,6 +132,19 @@ export default function UploadPortal() {
     if (res.ok) setUploads(prev => prev.filter(u => u.id !== id))
   }
 
+  async function toggleComplete() {
+    const next = !isComplete
+    if (next && !confirm('Mark your ad uploads as complete?\n\nThe tournament team will be notified. You can still unmark this later if needed.')) return
+    setCompletingLoading(true)
+    const res = await fetch(`/api/tournament/complete/${token}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ is_complete: next }),
+    })
+    if (res.ok) setIsComplete(next)
+    setCompletingLoading(false)
+  }
+
   function onDragOver(e) { e.preventDefault(); setDragging(true) }
   function onDragLeave()  { setDragging(false) }
   function onDrop(e) {
@@ -196,6 +212,20 @@ export default function UploadPortal() {
           </div>
         )}
 
+        {/* Complete banner */}
+        {isComplete && (
+          <div className={styles.completeBanner}>
+            <div className={styles.completeBannerIcon}>✓</div>
+            <div className={styles.completeBannerText}>
+              <div className={styles.completeBannerTitle}>Uploads marked as complete</div>
+              <div className={styles.completeBannerSub}>The tournament team has been notified. You can still add or remove files below.</div>
+            </div>
+            <button className={styles.unmarkBtn} onClick={toggleComplete} disabled={completingLoading}>
+              {completingLoading ? '…' : 'Unmark'}
+            </button>
+          </div>
+        )}
+
         {/* Instructions */}
         <div className={styles.instructCard}>
           <div className={styles.instructTitle}>How to upload your ads</div>
@@ -239,7 +269,7 @@ export default function UploadPortal() {
             <>
               <div className={styles.dzIcon}>📁</div>
               <div className={styles.dzLabel}><strong>Drop your ad files here</strong><br />or click to browse</div>
-              <div className={styles.dzSub}>JPG · PNG · WebP · MP4 · WMV · MOV</div>
+              <div className={styles.dzSub}>JPG · JPEG · WMV</div>
             </>
           )}
         </div>
@@ -330,6 +360,15 @@ export default function UploadPortal() {
             <div className={styles.emptyIcon}>📂</div>
             <div className={styles.emptyText}>No files uploaded yet</div>
             <div className={styles.emptySub}>Drop your ad files above to get started</div>
+          </div>
+        )}
+
+        {!isComplete && (
+          <div className={styles.markCompleteRow}>
+            <button className={styles.markCompleteBtn} onClick={toggleComplete} disabled={completingLoading || uploads.length === 0}>
+              {completingLoading ? 'Saving…' : '✓ Mark uploads as complete'}
+            </button>
+            {uploads.length === 0 && <span className={styles.markCompleteHint}>Upload at least one file to mark complete</span>}
           </div>
         )}
 

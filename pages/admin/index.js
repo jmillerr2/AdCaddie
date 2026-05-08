@@ -159,6 +159,12 @@ export default function Admin() {
     setCreating(false)
   }
 
+  async function toggleTournamentComplete(tournament) {
+    const next = !tournament.is_complete
+    await supabase.from('tournaments').update({ is_complete: next }).eq('id', tournament.id)
+    loadTournaments()
+  }
+
   async function deleteTournament(id) {
     if (!confirm('Delete this tournament and all its uploads?')) return
     await supabase.from('tournaments').delete().eq('id', id)
@@ -461,6 +467,7 @@ export default function Admin() {
           const totalFiles = (t.uploads || []).length
           const selSet     = selectedFiles[t.id] || new Set()
           const selCount   = selSet.size
+          const markedComplete = !!t.is_complete
           const lateFiles  = (t.uploads || []).filter(u => u.is_late).length
           const isPastDeadline = t.deadline && new Date() > new Date(t.deadline)
 
@@ -488,6 +495,7 @@ export default function Admin() {
                 </div>
                 <div className={styles.tournRight}>
                   <StatusBadge status={status} />
+                  {markedComplete && <span className={styles.completeBadge}>✓ Complete</span>}
                   <div className={styles.tournActions}>
                     <button className={styles.copyBtn} onClick={() => copyLink(t.upload_token)}>
                       {copied === t.upload_token ? '✓ Copied' : '🔗 Upload link'}
@@ -506,6 +514,13 @@ export default function Admin() {
                       aria-label={isOpen ? 'Collapse' : 'Expand files'}
                     >
                       {isOpen ? '▲' : '▼'}
+                    </button>
+                    <button
+                      className={markedComplete ? styles.btnGhost : styles.btnComplete}
+                      onClick={() => toggleTournamentComplete(t)}
+                      title={markedComplete ? 'Unmark complete' : 'Mark complete'}
+                    >
+                      {markedComplete ? '↩ Unmark' : '✓ Complete'}
                     </button>
                     <button className={styles.btnDanger} onClick={() => deleteTournament(t.id)}>
                       Delete
