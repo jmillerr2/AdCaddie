@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
-import { detectSequenceType, assignName } from '../../../lib/generator'
+import { detectSequenceType } from '../../../lib/generator'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -26,30 +26,24 @@ function getBoundary(contentType) {
 
 function parseMultipart(buffer, boundary) {
   const parts = []
-  const sep   = Buffer.from(`--${boundary}`)
-  const end   = Buffer.from(`--${boundary}--`)
+  const sep = Buffer.from(`--${boundary}`)
   let pos = 0
 
   while (pos < buffer.length) {
     const sepIdx = buffer.indexOf(sep, pos)
     if (sepIdx === -1) break
     pos = sepIdx + sep.length
-
     if (buffer.slice(pos, pos + 2).equals(Buffer.from('--'))) break
-
     pos += 2
 
     const headerEnd = buffer.indexOf(Buffer.from('\r\n\r\n'), pos)
     if (headerEnd === -1) break
-
     const headerStr = buffer.slice(pos, headerEnd).toString()
     pos = headerEnd + 4
 
     const nextSep = buffer.indexOf(sep, pos)
     if (nextSep === -1) break
-
-    const bodyEnd = nextSep - 2
-    const body    = buffer.slice(pos, bodyEnd)
+    const body = buffer.slice(pos, nextSep - 2)
     pos = nextSep
 
     const headers = {}
@@ -58,13 +52,10 @@ function parseMultipart(buffer, boundary) {
       if (key) headers[key.toLowerCase()] = vals.join(': ')
     })
 
-    const dispMatch = (headers['content-disposition'] || '').match(/name="([^"]+)"/)
     const fileMatch = (headers['content-disposition'] || '').match(/filename="([^"]+)"/)
-    const name      = dispMatch ? dispMatch[1] : null
     const filename  = fileMatch ? fileMatch[1] : null
     const type      = headers['content-type'] || 'application/octet-stream'
-
-    parts.push({ name, filename, type, body })
+    parts.push({ filename, type, body })
   }
   return parts
 }
@@ -80,23 +71,9 @@ async function getImageDimensions(buffer) {
 }
 
 const VIDEO_EXTS = ['wmv', 'mp4', 'mov', 'avi', 'mpg', 'mpeg']
-function isVideoFile(filename) {
-  return VIDEO_EXTS.includes((filename.split('.').pop() || '').toLowerCase())
-}
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end()
-
-  const { token } = req.query
-  if (!token) return res.status(400).json({ error: 'Missing token' })
-
-  const { data: tournament, error: tErr } = await supabase
-    .from('tournaments')
-    .select('id, name, deadline')
-    .eq('upload_token', token)
-    .single()
-
-  if (tErr || !tournament) return res.status(404).json({ error: 'Tournament not found' })
 
   const contentType = req.headers['content-type'] || ''
   const boundary    = getBoundary(contentType)
@@ -105,12 +82,11 @@ export default async function handler(req, res) {
   const rawBody  = await parseForm(req)
   const parts    = parseMultipart(rawBody, boundary)
   const filePart = parts.find(p => p.filename)
-
   if (!filePart) return res.status(400).json({ error: 'No file found in upload' })
 
   const { filename, type: mimeType, body: fileBuffer } = filePart
-  const isVideo = isVideoFile(filename)
   const ext     = filename.split('.').pop().toLowerCase()
+  const isVideo = VIDEO_EXTS.includes(ext)
 
   let width = 0, height = 0, sequenceType = null
 
@@ -136,14 +112,14 @@ export default async function handler(req, res) {
     }
   }
 
+  // Assign next C-XX name globally across all lpga_ads
   const { count } = await supabase
-    .from('uploads')
+    .from('lpga_ads')
     .select('id', { count: 'exact', head: true })
-    .eq('tournament_id', tournament.id)
-    .eq('sequence_type', sequenceType)
 
-  const assignedName = assignName(sequenceType, count || 0)
-  const filePath     = `${tournament.id}/${assignedName}.${ext}`
+  const n = String((count || 0) + 1).padStart(2, '0')
+  const assignedName = `C-${n}`
+  const filePath     = `lpga/${assignedName}.${ext}`
 
   const { error: storageErr } = await supabase.storage
     .from('ads')
@@ -153,15 +129,11 @@ export default async function handler(req, res) {
 
   const { data: urlData } = supabase.storage.from('ads').getPublicUrl(filePath)
 
-  // Determine if upload is late
-  const isLate = !!(tournament.deadline && new Date() > new Date(tournament.deadline))
-
-  const { data: upload, error: dbErr } = await supabase
-    .from('uploads')
+  const { data: ad, error: dbErr } = await supabase
+    .from('lpga_ads')
     .insert({
-      tournament_id:     tournament.id,
-      original_filename: filename,
       assigned_name:     assignedName,
+      original_filename: filename,
       sequence_type:     sequenceType,
       file_path:         filePath,
       file_url:          urlData.publicUrl,
@@ -169,23 +141,12 @@ export default async function handler(req, res) {
       height,
       is_video:          isVideo,
       size_bytes:        fileBuffer.length,
-      is_late:           isLate,
+      is_active:         true,
     })
     .select()
     .single()
 
   if (dbErr) return res.status(500).json({ error: dbErr.message })
 
-  // Log activity (non-blocking)
-  supabase.from('activity_log').insert({
-    tournament_id:  tournament.id,
-    event_type:     'upload',
-    filename:       filename,
-    assigned_name:  assignedName,
-    sequence_type:  sequenceType,
-    is_late:        isLate,
-    metadata:       { size_bytes: fileBuffer.length, width, height, is_video: isVideo }
-  }).then(() => {})
-
-  return res.status(200).json({ upload })
+  return res.status(200).json({ ad })
 }

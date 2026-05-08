@@ -4,11 +4,25 @@ import { supabase } from '../../lib/supabase'
 import styles from './upload.module.css'
 
 const SLOT_DEFS = [
-  { type: 'MainContent', label: 'Main Content',  size: '960 × 540',  color: 'var(--accent2)', accepts: 'Images & Videos', icon: '🖥' },
+  { type: 'MainContent', label: 'Main Content',  size: '960 × 540',  color: 'var(--accent)',  accepts: 'Images & Videos', icon: '🖥' },
   { type: 'RightRail',  label: 'Right Rail',    size: '320 × 540',  color: 'var(--rr)',      accepts: 'Images & Videos', icon: '📐' },
-  { type: 'Header',     label: 'Header',         size: '1280 × 120', color: 'var(--header)',  accepts: 'Images only',     icon: '📏' },
-  { type: 'Ticker',     label: 'Ticker',         size: '1280 × 60',  color: 'var(--ticker)',  accepts: 'Images only',     icon: '📺' },
+  { type: 'Header',     label: 'Header',         size: '1280 × 120', color: 'var(--ticker)',  accepts: 'Images only',     icon: '📏' },
+  { type: 'Ticker',     label: 'Ticker',         size: '1280 × 60',  color: 'var(--header)',  accepts: 'Images only',     icon: '📺' },
 ]
+
+const EXPECTED_DIMS = [
+  { label: 'Main Content',  dims: '960 × 540' },
+  { label: 'Right Rail',    dims: '320 × 540' },
+  { label: 'Header',        dims: '1280 × 120' },
+  { label: 'Ticker',        dims: '1280 × 60' },
+]
+
+function parseDimError(message) {
+  // Extract actual dimensions from: "Invalid image dimensions: 800x600. Expected ..."
+  const match = message && message.match(/Invalid image dimensions[:\s]+(\d+)[x×](\d+)/i)
+  if (match) return { width: match[1], height: match[2] }
+  return null
+}
 
 export default function UploadPortal() {
   const router = useRouter()
@@ -21,8 +35,6 @@ export default function UploadPortal() {
   const [dragging, setDragging]     = useState(false)
   const [uploading, setUploading]   = useState(false)
   const [uploadProgress, setUploadProgress] = useState([])
-  const [error, setError]           = useState(null)
-  const [deleteId, setDeleteId]     = useState(null)
   const fileRef = useRef()
 
   useEffect(() => {
@@ -33,7 +45,7 @@ export default function UploadPortal() {
     setLoading(true)
     const { data: t, error } = await supabase
       .from('tournaments')
-      .select('id, name, notes, created_at')
+      .select('id, name, notes, deadline, created_at')
       .eq('upload_token', token)
       .single()
 
@@ -53,7 +65,6 @@ export default function UploadPortal() {
   async function handleFiles(files) {
     if (!files || !files.length) return
     setUploading(true)
-    setError(null)
 
     const fileArr = Array.from(files)
     const progress = fileArr.map(f => ({ name: f.name, status: 'pending' }))
@@ -69,7 +80,6 @@ export default function UploadPortal() {
         const formData = new FormData()
         formData.append('file', file)
 
-        // For videos, try to get dimensions via video element
         let extraQuery = ''
         const isVid = /\.(wmv|mp4|mov|avi|mpg|mpeg)$/i.test(file.name)
         if (isVid) {
@@ -97,9 +107,7 @@ export default function UploadPortal() {
 
     setUploading(false)
     await loadTournament()
-
-    // Clear progress after 4 seconds
-    setTimeout(() => setUploadProgress([]), 4000)
+    setTimeout(() => setUploadProgress([]), 6000)
   }
 
   function getVideoDimensions(file) {
@@ -116,12 +124,8 @@ export default function UploadPortal() {
   }
 
   async function deleteUpload(id) {
-    setDeleteId(id)
     const res = await fetch(`/api/delete/${id}`, { method: 'DELETE' })
-    if (res.ok) {
-      setUploads(prev => prev.filter(u => u.id !== id))
-    }
-    setDeleteId(null)
+    if (res.ok) setUploads(prev => prev.filter(u => u.id !== id))
   }
 
   function onDragOver(e) { e.preventDefault(); setDragging(true) }
@@ -133,6 +137,8 @@ export default function UploadPortal() {
   }
 
   const uploadsFor = type => uploads.filter(u => u.sequence_type === type)
+
+  const isPastDeadline = tournament?.deadline && new Date() > new Date(tournament.deadline)
 
   // ── STATES ──
   if (loading) return (
@@ -168,12 +174,33 @@ export default function UploadPortal() {
 
       <div className={styles.container}>
 
+        {/* Deadline banners */}
+        {isPastDeadline && (
+          <div className={styles.deadlineBanner}>
+            <div className={styles.deadlineBannerIcon}>⚠️</div>
+            <div className={styles.deadlineBannerText}>
+              <div className={styles.deadlineBannerTitle}>Upload deadline has passed</div>
+              <div className={styles.deadlineBannerSub}>
+                The deadline was {new Date(tournament.deadline).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })}.
+                You can still upload files, but they will be marked as late.
+              </div>
+            </div>
+          </div>
+        )}
+
+        {!isPastDeadline && tournament?.deadline && (
+          <div className={styles.deadlineInfoBanner}>
+            ⏰ <strong>Deadline:</strong>&nbsp;
+            {new Date(tournament.deadline).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })}
+          </div>
+        )}
+
         {/* Instructions */}
         <div className={styles.instructCard}>
           <div className={styles.instructTitle}>How to upload your ads</div>
           <div className={styles.instructGrid}>
             {SLOT_DEFS.map(s => (
-              <div key={s.type} className={styles.instructSlot} style={{ borderColor: s.color + '44' }}>
+              <div key={s.type} className={styles.instructSlot} style={{ borderColor: s.color + '55' }}>
                 <div className={styles.instructIcon}>{s.icon}</div>
                 <div className={styles.instructLabel} style={{ color: s.color }}>{s.label}</div>
                 <div className={styles.instructSize}>{s.size}</div>
@@ -182,7 +209,7 @@ export default function UploadPortal() {
             ))}
           </div>
           <div className={styles.instructNote}>
-            Files are automatically detected and named based on their dimensions. You don't need to rename anything.
+            Files are automatically detected and named based on their dimensions. You don&apos;t need to rename anything.
           </div>
         </div>
 
@@ -219,22 +246,39 @@ export default function UploadPortal() {
         {/* Upload progress */}
         {uploadProgress.length > 0 && (
           <div className={styles.progressList}>
-            {uploadProgress.map((p, i) => (
-              <div key={i} className={`${styles.progressItem} ${styles[p.status]}`}>
-                <span className={styles.progressIcon}>
-                  {p.status === 'pending'   ? '⏳' :
-                   p.status === 'uploading' ? '⏫' :
-                   p.status === 'done'      ? '✓'  : '✗'}
-                </span>
-                <span className={styles.progressName}>{p.name}</span>
-                {p.status === 'done' && p.upload &&
-                  <span className={styles.progressAssigned}>→ {p.upload.assigned_name} ({p.upload.sequence_type})</span>
-                }
-                {p.status === 'error' &&
-                  <span className={styles.progressError}>{p.message}</span>
-                }
-              </div>
-            ))}
+            {uploadProgress.map((p, i) => {
+              const dimError = p.status === 'error' ? parseDimError(p.message) : null
+              return (
+                <div key={i} className={`${styles.progressItem} ${styles[p.status]}`}>
+                  <span className={styles.progressIcon}>
+                    {p.status === 'pending'   ? '⏳' :
+                     p.status === 'uploading' ? '⏫' :
+                     p.status === 'done'      ? '✓'  : '✗'}
+                  </span>
+                  <span className={styles.progressName}>{p.name}</span>
+                  {p.status === 'done' && p.upload &&
+                    <span className={styles.progressAssigned}>→ {p.upload.assigned_name} ({p.upload.sequence_type})</span>
+                  }
+                  {p.status === 'error' && (
+                    dimError ? (
+                      <div className={styles.dimErrorWrap}>
+                        <div className={styles.dimErrorMain}>
+                          Dimensions detected: <strong>{dimError.width} × {dimError.height}</strong> — no matching slot
+                        </div>
+                        <div className={styles.dimErrorHelp}>
+                          Please resize your file to one of the accepted sizes:
+                          {EXPECTED_DIMS.map(d => (
+                            <div key={d.label}> · <strong>{d.dims}</strong> — {d.label}</div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <span className={styles.progressError}>{p.message}</span>
+                    )
+                  )}
+                </div>
+              )
+            })}
           </div>
         )}
 
@@ -250,7 +294,7 @@ export default function UploadPortal() {
               </div>
               <div className={styles.fileGrid}>
                 {slotUploads.map(u => (
-                  <div key={u.id} className={styles.fileCard} style={{ borderColor: slot.color + '33' }}>
+                  <div key={u.id} className={styles.fileCard} style={{ borderColor: slot.color + '44' }}>
                     <div className={styles.fileThumb}>
                       {u.is_video ? (
                         <div className={styles.videoThumb}>🎬</div>
@@ -259,17 +303,19 @@ export default function UploadPortal() {
                       )}
                     </div>
                     <div className={styles.fileInfo}>
-                      <div className={styles.fileName} style={{ color: slot.color }}>{u.assigned_name}</div>
+                      <div className={styles.fileName} style={{ color: slot.color }}>
+                        {u.assigned_name}
+                        {u.is_late && <span className={styles.lateBadgeCard}>Late</span>}
+                      </div>
                       <div className={styles.fileOrig}>{u.original_filename}</div>
                       <div className={styles.fileMeta}>{u.width}×{u.height} · {u.is_video ? 'Video' : 'Image'} · {Math.round(u.size_bytes / 1024)} KB</div>
                     </div>
                     <button
                       className={styles.deleteBtn}
                       onClick={() => deleteUpload(u.id)}
-                      disabled={deleteId === u.id}
                       title="Delete this file"
                     >
-                      {deleteId === u.id ? '…' : '✕'}
+                      ✕
                     </button>
                   </div>
                 ))}

@@ -11,36 +11,26 @@ export default async function handler(req, res) {
   const { id } = req.query
   if (!id) return res.status(400).json({ error: 'Missing id' })
 
-  const { data: upload, error: fetchErr } = await supabase
-    .from('uploads')
+  const { data: ad, error: fetchErr } = await supabase
+    .from('lpga_ads')
     .select('*')
     .eq('id', id)
     .single()
 
-  if (fetchErr || !upload) return res.status(404).json({ error: 'Upload not found' })
+  if (fetchErr || !ad) return res.status(404).json({ error: 'Ad not found' })
 
   const { error: storageErr } = await supabase.storage
     .from('ads')
-    .remove([upload.file_path])
+    .remove([ad.file_path])
 
   if (storageErr) return res.status(500).json({ error: storageErr.message })
 
   const { error: dbErr } = await supabase
-    .from('uploads')
+    .from('lpga_ads')
     .delete()
     .eq('id', id)
 
   if (dbErr) return res.status(500).json({ error: dbErr.message })
-
-  // Log activity (non-blocking)
-  supabase.from('activity_log').insert({
-    tournament_id: upload.tournament_id,
-    event_type:    'delete',
-    filename:      upload.original_filename,
-    assigned_name: upload.assigned_name,
-    sequence_type: upload.sequence_type,
-    metadata:      { size_bytes: upload.size_bytes }
-  }).then(() => {})
 
   return res.status(200).json({ ok: true })
 }

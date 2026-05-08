@@ -8,6 +8,7 @@
   position: sticky;
   top: 0;
   z-index: 100;
+  box-shadow: var(--shadow-sm);
 }
 .headerInner {
   max-width: 900px;
@@ -38,6 +39,42 @@
 /* ── CONTAINER ── */
 .container { max-width: 900px; margin: 0 auto; padding: 2rem 1.5rem; }
 
+/* ── DEADLINE BANNERS ── */
+.deadlineBanner {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  border-radius: var(--radius-lg);
+  padding: 1rem 1.25rem;
+  margin-bottom: 1.5rem;
+}
+.deadlineBannerIcon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+.deadlineBannerText { flex: 1; }
+.deadlineBannerTitle {
+  font-family: 'Syne', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  color: #9a3412;
+  margin-bottom: 3px;
+}
+.deadlineBannerSub { font-size: 13px; color: #c2410c; }
+
+.deadlineInfoBanner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: var(--radius-lg);
+  padding: 0.875rem 1.25rem;
+  margin-bottom: 1.5rem;
+  font-size: 13px;
+  color: #166534;
+}
+.deadlineInfoBanner strong { font-weight: 700; }
+
 /* ── INSTRUCTIONS ── */
 .instructCard {
   background: var(--surface);
@@ -45,11 +82,12 @@
   border-radius: var(--radius-lg);
   padding: 1.5rem;
   margin-bottom: 1.5rem;
+  box-shadow: var(--shadow-sm);
 }
 .instructTitle {
   font-family: 'Syne', sans-serif;
   font-size: 15px;
-  font-weight: 600;
+  font-weight: 700;
   margin-bottom: 1rem;
   color: var(--text);
 }
@@ -77,7 +115,7 @@
   padding: 10px 14px;
   background: var(--surface2);
   border-radius: var(--radius);
-  border-left: 3px solid var(--accent2);
+  border-left: 3px solid var(--accent);
 }
 
 /* ── DROP ZONE ── */
@@ -91,8 +129,8 @@
   margin-bottom: 1.5rem;
   background: var(--surface);
 }
-.dropzone:hover { border-color: var(--accent); background: rgba(200,240,96,0.03); }
-.dragging { border-color: var(--accent) !important; background: rgba(200,240,96,0.06) !important; }
+.dropzone:hover { border-color: var(--accent); background: rgba(26,92,58,0.03); }
+.dragging { border-color: var(--accent) !important; background: rgba(26,92,58,0.05) !important; }
 .uploadingZone { cursor: default; }
 .dzIcon { font-size: 36px; margin-bottom: 12px; opacity: 0.5; }
 .dzLabel { font-size: 15px; color: var(--text); line-height: 1.6; margin-bottom: 6px; }
@@ -120,15 +158,16 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
+  box-shadow: var(--shadow-sm);
 }
 .progressItem {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 10px;
   font-size: 13px;
   font-family: 'DM Mono', monospace;
 }
-.progressIcon { font-size: 14px; flex-shrink: 0; width: 20px; text-align: center; }
+.progressIcon { font-size: 14px; flex-shrink: 0; width: 20px; text-align: center; margin-top: 1px; }
 .progressName { color: var(--text); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .progressAssigned { color: var(--accent); font-size: 12px; white-space: nowrap; }
 .progressError { color: var(--danger); font-size: 12px; }
@@ -136,6 +175,22 @@
 .uploading .progressName { color: var(--accent2); }
 .done .progressName      { color: var(--text); }
 .error .progressName     { color: var(--danger); }
+
+/* ── DIMENSION ERROR CARD ── */
+.dimErrorWrap { flex: 1; }
+.dimErrorMain { color: var(--danger); font-size: 12px; }
+.dimErrorHelp {
+  margin-top: 6px;
+  padding: 10px 12px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: var(--radius);
+  font-size: 11px;
+  color: #7f1d1d;
+  line-height: 1.6;
+  font-family: 'DM Sans', sans-serif;
+}
+.dimErrorHelp strong { font-family: 'DM Mono', monospace; color: #991b1b; }
 
 /* ── SLOT SECTIONS ── */
 .slotSection { margin-bottom: 1.5rem; }
@@ -168,9 +223,11 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  transition: border-color 0.2s;
+  transition: box-shadow 0.2s;
   position: relative;
+  box-shadow: var(--shadow-sm);
 }
+.fileCard:hover { box-shadow: var(--shadow); }
 .fileThumb {
   width: 100%;
   aspect-ratio: 16/9;
@@ -186,11 +243,26 @@
 .fileName { font-family: 'DM Mono', monospace; font-size: 15px; font-weight: 500; margin-bottom: 3px; }
 .fileOrig { font-size: 11px; color: var(--muted); margin-bottom: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .fileMeta { font-size: 11px; color: var(--border2); font-family: 'DM Mono', monospace; }
+.lateBadgeCard {
+  display: inline-block;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: #fff7ed;
+  color: #c2410c;
+  border: 1px solid #fed7aa;
+  font-family: 'DM Mono', monospace;
+  text-transform: uppercase;
+  margin-left: 6px;
+  vertical-align: middle;
+  letter-spacing: 0.05em;
+}
 .deleteBtn {
   position: absolute;
   top: 8px; right: 8px;
   width: 28px; height: 28px;
-  background: rgba(13,15,18,0.8);
+  background: rgba(255,255,255,0.9);
   border: 1px solid var(--border2);
   border-radius: 50%;
   color: var(--danger);
@@ -204,7 +276,7 @@
   backdrop-filter: blur(4px);
 }
 .fileCard:hover .deleteBtn { opacity: 1; }
-.deleteBtn:hover { background: rgba(240,112,112,0.2); border-color: var(--danger); }
+.deleteBtn:hover { background: #fef2f2; border-color: var(--danger); }
 
 /* ── EMPTY STATE ── */
 .emptyState { text-align: center; padding: 4rem 2rem; }
