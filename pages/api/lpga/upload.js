@@ -120,8 +120,11 @@ export default async function handler(req, res) {
     .select('id', { count: 'exact', head: true })
     .eq('sequence_type', sequenceType)
 
-  const n = String((count || 0) + 1).padStart(2, '0')
-  const assignedName = sequenceType === 'RightRail' ? `R-LPGA-${n}` : `C${n}`
+  const n        = String((count || 0) + 1).padStart(2, '0')
+  const baseName = filename.replace(/\.[^.]+$/, '').replace(/[^a-zA-Z0-9 _\-]/g, '').trim()
+  const assignedName = sequenceType === 'RightRail'
+    ? `R-LPGA-${n} - ${baseName}`
+    : `C${n} - ${baseName}`
   const filePath     = `lpga/${assignedName}.${ext}`
 
   const { error: storageErr } = await supabase.storage

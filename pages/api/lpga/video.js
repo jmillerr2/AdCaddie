@@ -26,9 +26,10 @@ export default async function handler(req, res) {
 
     const durationSec  = Math.round(parseFloat(duration))
     const n            = String((count || 0) + 1).padStart(2, '0')
+    const baseName     = filename.replace(/\.[^.]+$/, '').replace(/[^a-zA-Z0-9 _\-]/g, '').trim()
     const assignedName = sequenceType === 'RightRail'
-      ? `R-LPGA-${n}(${durationSec}s)`
-      : `C${n}(${durationSec}s)`
+      ? `R-LPGA-${n}(${durationSec}s) - ${baseName}`
+      : `C${n}(${durationSec}s) - ${baseName}`
     const filePath     = `lpga/${assignedName}.wmv`
 
     const { data: signData, error: signErr } = await supabase.storage

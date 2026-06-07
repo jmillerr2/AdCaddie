@@ -1020,6 +1020,84 @@
 .activityFile  { font-family: 'DM Mono', monospace; font-size: 12px; }
 .activityMeta  { font-size: 11px; color: var(--muted); }
 
+/* ── SETTINGS MODAL ── */
+.settingsGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.settingsRow {
+  border: 1px solid var(--border2);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: background 0.15s, border-color 0.15s;
+}
+.settingsRowOn  { background: var(--surface); border-color: var(--accent); }
+.settingsRowOff { background: var(--surface2); opacity: 0.65; }
+.settingsCheck {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+}
+.settingsCheck input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: var(--accent);
+}
+.settingsLabel {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  font-family: 'Inter', sans-serif;
+}
+.settingsDesc {
+  font-size: 11px;
+  color: var(--muted);
+  margin-left: 26px;
+}
+.settingsDur {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: 26px;
+  margin-top: 2px;
+}
+.settingsDurLabel {
+  font-size: 11px;
+  color: var(--muted);
+  font-family: 'DM Mono', monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.settingsDurInput {
+  width: 70px;
+  height: 30px;
+  border: 1px solid var(--border2);
+  border-radius: var(--radius);
+  padding: 0 8px;
+  font-size: 13px;
+  font-family: 'DM Mono', monospace;
+  background: var(--surface2);
+  color: var(--text);
+  outline: none;
+}
+.settingsDurInput:disabled { opacity: 0.4; cursor: not-allowed; }
+.settingsNote {
+  margin-top: 14px;
+  font-size: 11px;
+  color: var(--muted);
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 8px 12px;
+  line-height: 1.5;
+}
+
 /* ── RESPONSIVE ── */
 @media (max-width: 720px) {
   .statsGrid { grid-template-columns: repeat(3, 1fr); }

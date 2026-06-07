@@ -3,6 +3,20 @@ import Link from 'next/link'
 import { supabase } from '../../lib/supabase'
 import styles from './admin.module.css'
 
+const SYSTEM_ELEMENT_INFO = [
+  { key: '_SC',      label: 'Scorecards',    desc: 'Player scoring cards (PlayerScoring_Scorecards)' },
+  { key: '_LB',      label: 'Leaderboard',   desc: 'Tournament leaderboard graphic' },
+  { key: '_ProjCut', label: 'Projected Cut', desc: 'Projected cut line graphic' },
+  { key: '_NOG',     label: 'Next On Green', desc: 'Next player on green locator' },
+]
+
+const DEFAULT_SETTINGS = {
+  _SC:      { enabled: true,  duration: 24 },
+  _LB:      { enabled: true,  duration: 30 },
+  _ProjCut: { enabled: true,  duration: 10 },
+  _NOG:     { enabled: true,  duration: 10 },
+}
+
 const SLOTS = [
   { type: 'MainContent', label: 'Main Content', short: 'MC', color: '#1a5c3a', dim: '960×540' },
   { type: 'RightRail',   label: 'Right Rail',   short: 'RR', color: '#0369a1', dim: '320×540' },
@@ -90,10 +104,21 @@ export default function Admin() {
   const [activityOpen, setActivityOpen] = useState(false)
   const [selectedFiles, setSelectedFiles] = useState({})
   const [createError, setCreateError] = useState('')
+  const [settings, setSettings] = useState(DEFAULT_SETTINGS)
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [settingsDraft, setSettingsDraft] = useState(DEFAULT_SETTINGS)
 
   useEffect(() => {
     const saved = sessionStorage.getItem('ac_admin')
     if (saved === 'true') { setAuthed(true); loadTournaments(); loadActivityLog() }
+    try {
+      const savedSettings = localStorage.getItem('ac_settings')
+      if (savedSettings) {
+        const parsed = JSON.parse(savedSettings)
+        setSettings(parsed)
+        setSettingsDraft(parsed)
+      }
+    } catch {}
   }, [])
 
   async function handleLogin(e) {
@@ -137,35 +162,54 @@ export default function Admin() {
     if (!newName.trim()) return
     setCreating(true)
     setCreateError('')
-    const insertData = {
-      name: newName.trim(),
-      notes: newNotes.trim(),
-      upload_token: crypto.randomUUID(),
-    }
-    if (newDeadline) insertData.deadline = new Date(newDeadline).toISOString()
-
-    const { data: tournament, error } = await supabase
-      .from('tournaments')
-      .insert(insertData)
-      .select()
-      .single()
-
-    if (!error && tournament) {
-      supabase.from('activity_log').insert({
-        tournament_id: tournament.id,
-        event_type: 'tournament_created',
-        metadata: { name: tournament.name }
-      }).then(() => {})
-      setNewName('')
-      setNewNotes('')
-      setNewDeadline('')
-      setCreateError('')
-      loadTournaments()
-      loadActivityLog()
-    } else if (error) {
-      setCreateError(error.message)
+    try {
+      const res = await fetch('/api/admin/create-tournament', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name:     newName.trim(),
+          notes:    newNotes.trim(),
+          deadline: newDeadline || null,
+        })
+      })
+      const json = await res.json()
+      if (!res.ok) {
+        setCreateError(json.error || `Server error ${res.status}`)
+      } else {
+        supabase.from('activity_log').insert({
+          tournament_id: json.tournament.id,
+          event_type: 'tournament_created',
+          metadata: { name: json.tournament.name }
+        }).then(() => {})
+        setNewName('')
+        setNewNotes('')
+        setNewDeadline('')
+        setCreateError('')
+        loadTournaments()
+        loadActivityLog()
+      }
+    } catch (err) {
+      setCreateError(err.message || 'Network error — please try again')
     }
     setCreating(false)
+  }
+
+  function openSettings() {
+    setSettingsDraft(JSON.parse(JSON.stringify(settings)))
+    setSettingsOpen(true)
+  }
+
+  function saveSettings() {
+    setSettings(settingsDraft)
+    try { localStorage.setItem('ac_settings', JSON.stringify(settingsDraft)) } catch {}
+    setSettingsOpen(false)
+  }
+
+  function updateDraftElement(key, field, value) {
+    setSettingsDraft(prev => ({
+      ...prev,
+      [key]: { ...prev[key], [field]: field === 'duration' ? Number(value) : value }
+    }))
   }
 
   async function removeAllFiles(tournament) {
@@ -210,12 +254,12 @@ export default function Admin() {
     ])
     const { generateElementsJSON, generateSequencesJSON } = await import('../../lib/generator')
     if (type === 'elements') {
-      downloadJSON(generateElementsJSON(uploads || [], lpgaAds || []), `${tournament.name}-elements.json`)
+      downloadJSON(generateElementsJSON(uploads || [], lpgaAds || [], settings), `${tournament.name}-elements.json`)
     } else if (type === 'sequences') {
-      downloadJSON(generateSequencesJSON(uploads || [], lpgaAds || []), `${tournament.name}-sequences.json`)
+      downloadJSON(generateSequencesJSON(uploads || [], lpgaAds || [], settings), `${tournament.name}-sequences.json`)
     } else {
-      downloadJSON(generateElementsJSON(uploads || [], lpgaAds || []), `${tournament.name}-elements.json`)
-      setTimeout(() => downloadJSON(generateSequencesJSON(uploads || [], lpgaAds || []), `${tournament.name}-sequences.json`), 400)
+      downloadJSON(generateElementsJSON(uploads || [], lpgaAds || [], settings), `${tournament.name}-elements.json`)
+      setTimeout(() => downloadJSON(generateSequencesJSON(uploads || [], lpgaAds || [], settings), `${tournament.name}-sequences.json`), 400)
     }
 
     // Log the export
@@ -247,8 +291,8 @@ export default function Admin() {
       supabase.from('lpga_ads').select('*').neq('is_active', false).order('assigned_name', { ascending: true }),
     ])
     const { generateElementsJSON, generateSequencesJSON } = await import('../../lib/generator')
-    const elements  = generateElementsJSON(uploads || [], lpgaAds || [])
-    const sequences = generateSequencesJSON(uploads || [], lpgaAds || [])
+    const elements  = generateElementsJSON(uploads || [], lpgaAds || [], settings)
+    const sequences = generateSequencesJSON(uploads || [], lpgaAds || [], settings)
     setPreview({ tournament, elements, sequences, tab: 'elements' })
     setPreviewLoading(false)
   }
@@ -386,6 +430,7 @@ export default function Admin() {
         </div>
         <div className={styles.headerRight}>
           <Link href="/admin/lpga" className={styles.headerLink}>🏌️ LPGA Ads</Link>
+          <button className={styles.headerLink} onClick={openSettings} title="Sequence settings">⚙ Sequence Settings</button>
           <button className={styles.refreshBtn} onClick={() => { loadTournaments(); loadActivityLog() }} title="Refresh data">↻</button>
           <button className={styles.logoutBtn} onClick={() => { sessionStorage.removeItem('ac_admin'); setAuthed(false) }}>
             Sign out
@@ -779,6 +824,68 @@ export default function Admin() {
         </div>
 
       </div>
+
+      {/* Settings Modal */}
+      {settingsOpen && (
+        <div className={styles.modalOverlay} onClick={e => e.target === e.currentTarget && setSettingsOpen(false)}>
+          <div className={styles.modal} style={{ maxWidth: 560 }}>
+            <div className={styles.modalHeader}>
+              <div>
+                <div className={styles.modalTitle}>⚙ Sequence Settings</div>
+                <div className={styles.modalSub}>Choose which system elements appear in the Main Content sequence after each ad cycle.</div>
+              </div>
+              <button className={styles.modalClose} onClick={() => setSettingsOpen(false)}>×</button>
+            </div>
+            <div className={styles.modalBody}>
+              <div className={styles.settingsGrid}>
+                {SYSTEM_ELEMENT_INFO.map(el => {
+                  const draft = settingsDraft[el.key] || {}
+                  return (
+                    <div key={el.key} className={`${styles.settingsRow} ${draft.enabled ? styles.settingsRowOn : styles.settingsRowOff}`}>
+                      <label className={styles.settingsCheck}>
+                        <input
+                          type="checkbox"
+                          checked={!!draft.enabled}
+                          onChange={e => updateDraftElement(el.key, 'enabled', e.target.checked)}
+                        />
+                        <span className={styles.settingsLabel}>{el.label}</span>
+                      </label>
+                      <span className={styles.settingsDesc}>{el.desc}</span>
+                      <div className={styles.settingsDur}>
+                        <label className={styles.settingsDurLabel}>Duration (s)</label>
+                        <input
+                          type="number"
+                          min="1"
+                          max="300"
+                          value={draft.duration ?? ''}
+                          onChange={e => updateDraftElement(el.key, 'duration', e.target.value)}
+                          disabled={!draft.enabled}
+                          className={styles.settingsDurInput}
+                        />
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+              <div className={styles.settingsNote}>
+                Settings apply to all JSON exports from this browser. Disabled elements are excluded from both elements.json and sequences.json.
+              </div>
+            </div>
+            <div className={styles.modalFooter}>
+              <button className={styles.btnGhost} onClick={() => setSettingsOpen(false)}>Cancel</button>
+              <button
+                className={styles.btnGhost}
+                onClick={() => {
+                  setSettingsDraft(DEFAULT_SETTINGS)
+                }}
+              >
+                Reset to Defaults
+              </button>
+              <button className={styles.btnAccent} onClick={saveSettings}>Save Settings</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Preview Modal */}
       {preview && (

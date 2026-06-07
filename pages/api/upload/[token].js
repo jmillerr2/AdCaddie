@@ -58,7 +58,7 @@ export default async function handler(req, res) {
       .eq('sequence_type', sequenceType)
 
     const durationSec  = isVideo && duration ? parseFloat(duration) : null
-    const assignedName = assignName(sequenceType, count || 0, durationSec)
+    const assignedName = assignName(sequenceType, count || 0, durationSec, filename)
     const filePath = `${tournament.id}/${assignedName}.${ext}`
 
     const { data: signData, error: signErr } = await supabase.storage
