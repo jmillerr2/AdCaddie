@@ -89,6 +89,7 @@ export default function Admin() {
   const [activityFilter, setActivityFilter] = useState('all')
   const [activityOpen, setActivityOpen] = useState(false)
   const [selectedFiles, setSelectedFiles] = useState({})
+  const [createError, setCreateError] = useState('')
 
   useEffect(() => {
     const saved = sessionStorage.getItem('ac_admin')
@@ -135,8 +136,12 @@ export default function Admin() {
     e.preventDefault()
     if (!newName.trim()) return
     setCreating(true)
-    const slug = newName.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9\-]/g, '')
-    const insertData = { name: newName.trim(), slug, notes: newNotes.trim() }
+    setCreateError('')
+    const insertData = {
+      name: newName.trim(),
+      notes: newNotes.trim(),
+      upload_token: crypto.randomUUID(),
+    }
     if (newDeadline) insertData.deadline = new Date(newDeadline).toISOString()
 
     const { data: tournament, error } = await supabase
@@ -154,8 +159,11 @@ export default function Admin() {
       setNewName('')
       setNewNotes('')
       setNewDeadline('')
+      setCreateError('')
       loadTournaments()
       loadActivityLog()
+    } else if (error) {
+      setCreateError(error.message)
     }
     setCreating(false)
   }
@@ -455,6 +463,9 @@ export default function Admin() {
                 {creating ? 'Creating…' : 'Create'}
               </button>
             </div>
+            {createError && (
+              <div className={styles.createError}>⚠ {createError}</div>
+            )}
           </form>
         </div>
 
