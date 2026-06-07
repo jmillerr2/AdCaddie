@@ -1064,7 +1064,6 @@
 .seqCard {
   border: 1px solid var(--border2);
   border-radius: var(--radius);
-  overflow: hidden;
 }
 .seqCardHeader {
   display: flex;
@@ -1158,9 +1157,12 @@
   font-style: italic;
 }
 .seqAdGrid {
+  max-height: 220px;
+  overflow-y: auto;
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
+  align-content: flex-start;
 }
 .seqAdItem {
   display: flex;
