@@ -104,6 +104,7 @@ export default function Admin() {
   const [activityOpen, setActivityOpen] = useState(false)
   const [selectedFiles, setSelectedFiles] = useState({})
   const [createError, setCreateError] = useState('')
+  const [loadError, setLoadError]     = useState('')
   const [settings, setSettings] = useState(DEFAULT_SETTINGS)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [settingsDraft, setSettingsDraft] = useState(DEFAULT_SETTINGS)
@@ -140,11 +141,16 @@ export default function Admin() {
 
   async function loadTournaments() {
     setLoading(true)
+    setLoadError('')
     const { data, error } = await supabase
       .from('tournaments')
       .select(`*, uploads(id, sequence_type, assigned_name, is_video, original_filename, file_url, width, height, size_bytes, is_late, created_at)`)
       .order('created_at', { ascending: false })
-    if (!error) setTournaments(data || [])
+    if (error) {
+      setLoadError(`Supabase connection error: ${error.message} — check that your project is not paused at app.supabase.com`)
+    } else {
+      setTournaments(data || [])
+    }
     setLoading(false)
   }
 
@@ -532,6 +538,15 @@ export default function Admin() {
             </button>
           ))}
         </div>
+
+        {/* Supabase connection error */}
+        {loadError && (
+          <div className={styles.loadErrorBanner}>
+            <strong>⚠ Database unreachable</strong>
+            <span>{loadError}</span>
+            <button className={styles.btnGhost} onClick={() => { setLoadError(''); loadTournaments() }}>Retry</button>
+          </div>
+        )}
 
         {/* Loading */}
         {loading && (
