@@ -973,7 +973,7 @@ export default function Admin() {
       {/* Sequence Builder Modal */}
       {seqBuilderOpen && (
         <div className={styles.modalOverlay} onClick={e => e.target === e.currentTarget && setSeqBuilderOpen(false)}>
-          <div className={styles.modal} style={{ maxWidth: 760, width: '96vw', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
+          <div className={styles.modal} style={{ maxWidth: 760, width: '96vw' }}>
             <div className={styles.modalHeader}>
               <div>
                 <div className={styles.modalTitle}>📋 Sequence Builder — {seqBuilderTourn?.name}</div>

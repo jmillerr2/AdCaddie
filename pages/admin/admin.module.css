@@ -1040,8 +1040,8 @@
 /* ── SEQUENCE BUILDER MODAL ── */
 .seqBuilderBody {
   padding: 1rem 1.5rem;
-  flex: 1;
-  min-height: 0;
+  /* overlay padding (4rem) + modal header (~80px) + modal footer (~65px) = ~280px overhead */
+  max-height: calc(100vh - 280px);
   overflow-y: auto;
   display: flex;
   flex-direction: column;
