@@ -104,7 +104,13 @@ export default function Admin() {
   const [activityOpen, setActivityOpen] = useState(false)
   const [selectedFiles, setSelectedFiles] = useState({})
   const [createError, setCreateError] = useState('')
-  const [loadError, setLoadError]     = useState('')
+  const [loadError, setLoadError]       = useState('')
+  const [seqBuilderOpen, setSeqBuilderOpen]     = useState(false)
+  const [seqBuilderTourn, setSeqBuilderTourn]   = useState(null)
+  const [seqBuilderConfigs, setSeqBuilderConfigs] = useState([])
+  const [seqBuilderLpgaAds, setSeqBuilderLpgaAds] = useState([])
+  const [seqBuilderLoading, setSeqBuilderLoading] = useState(false)
+  const [seqExpandedIds, setSeqExpandedIds]     = useState(new Set())
   const [settings, setSettings] = useState(DEFAULT_SETTINGS)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [settingsDraft, setSettingsDraft] = useState(DEFAULT_SETTINGS)
@@ -218,6 +224,124 @@ export default function Admin() {
     }))
   }
 
+  // ── SEQUENCE BUILDER ─────────────────────────────────────────────────────
+
+  function loadSeqConfigs(tournamentId) {
+    try {
+      const stored = localStorage.getItem(`ac_seqcfg_${tournamentId}`)
+      return stored ? JSON.parse(stored) : []
+    } catch { return [] }
+  }
+
+  function makeDefaultSeqConfig(n) {
+    return {
+      id: `seq-${Date.now()}-${n}`,
+      name: `Main Content ${n}`,
+      tournamentAdNames: [],
+      lpgaAdNames: [],
+      systemElements: JSON.parse(JSON.stringify(DEFAULT_SETTINGS)),
+    }
+  }
+
+  async function openSeqBuilder(tournament) {
+    setSeqBuilderTourn(tournament)
+    setSeqBuilderLoading(true)
+    setSeqBuilderOpen(true)
+    const { data: lpgaAds } = await supabase
+      .from('lpga_ads')
+      .select('*')
+      .eq('sequence_type', 'MainContent')
+      .neq('is_active', false)
+      .order('assigned_name', { ascending: true })
+    const stored = loadSeqConfigs(tournament.id)
+    const configs = stored.length > 0 ? stored : [makeDefaultSeqConfig(1)]
+    setSeqBuilderLpgaAds(lpgaAds || [])
+    setSeqBuilderConfigs(configs)
+    setSeqExpandedIds(new Set(configs.map(c => c.id)))
+    setSeqBuilderLoading(false)
+  }
+
+  function addSeqConfig() {
+    const n = seqBuilderConfigs.length + 1
+    const cfg = makeDefaultSeqConfig(n)
+    setSeqBuilderConfigs(prev => [...prev, cfg])
+    setSeqExpandedIds(prev => new Set([...prev, cfg.id]))
+  }
+
+  function deleteSeqConfig(id) {
+    setSeqBuilderConfigs(prev => prev.filter(c => c.id !== id))
+    setSeqExpandedIds(prev => { const s = new Set(prev); s.delete(id); return s })
+  }
+
+  function toggleSeqExpand(id) {
+    setSeqExpandedIds(prev => {
+      const s = new Set(prev)
+      s.has(id) ? s.delete(id) : s.add(id)
+      return s
+    })
+  }
+
+  function updateSeqName(id, name) {
+    setSeqBuilderConfigs(prev => prev.map(c => c.id === id ? { ...c, name } : c))
+  }
+
+  function toggleTournAd(configId, adName) {
+    setSeqBuilderConfigs(prev => prev.map(c => {
+      if (c.id !== configId) return c
+      const names = c.tournamentAdNames.includes(adName)
+        ? c.tournamentAdNames.filter(n => n !== adName)
+        : [...c.tournamentAdNames, adName]
+      return { ...c, tournamentAdNames: names }
+    }))
+  }
+
+  function toggleLpgaAd(configId, adName) {
+    setSeqBuilderConfigs(prev => prev.map(c => {
+      if (c.id !== configId) return c
+      const names = c.lpgaAdNames.includes(adName)
+        ? c.lpgaAdNames.filter(n => n !== adName)
+        : [...c.lpgaAdNames, adName]
+      return { ...c, lpgaAdNames: names }
+    }))
+  }
+
+  function selectAllTournAds(configId) {
+    const allNames = (seqBuilderTourn.uploads || [])
+      .filter(u => u.sequence_type === 'MainContent')
+      .map(u => u.assigned_name)
+    setSeqBuilderConfigs(prev => prev.map(c => c.id === configId ? { ...c, tournamentAdNames: allNames } : c))
+  }
+
+  function selectAllLpgaAds(configId) {
+    const allNames = seqBuilderLpgaAds.map(a => a.assigned_name)
+    setSeqBuilderConfigs(prev => prev.map(c => c.id === configId ? { ...c, lpgaAdNames: allNames } : c))
+  }
+
+  function updateSeqSysEl(configId, key, field, value) {
+    setSeqBuilderConfigs(prev => prev.map(c => {
+      if (c.id !== configId) return c
+      return {
+        ...c,
+        systemElements: {
+          ...c.systemElements,
+          [key]: { ...c.systemElements[key], [field]: field === 'duration' ? Number(value) : value }
+        }
+      }
+    }))
+  }
+
+  function saveSeqBuilderConfigs() {
+    if (!seqBuilderTourn) return
+    try {
+      localStorage.setItem(`ac_seqcfg_${seqBuilderTourn.id}`, JSON.stringify(seqBuilderConfigs))
+    } catch {}
+    setSeqBuilderOpen(false)
+  }
+
+  function clearSeqConfigs(tournamentId) {
+    try { localStorage.removeItem(`ac_seqcfg_${tournamentId}`) } catch {}
+  }
+
   async function removeAllFiles(tournament) {
     if (!confirm(
       `⚠ Remove all ${(tournament.uploads || []).length} uploaded file${(tournament.uploads || []).length !== 1 ? 's' : ''} from "${tournament.name}"?\n\nThis permanently deletes every ad file for this tournament and cannot be undone.`
@@ -258,14 +382,16 @@ export default function Admin() {
       supabase.from('uploads').select('*').eq('tournament_id', tournament.id),
       supabase.from('lpga_ads').select('*').neq('is_active', false).order('assigned_name', { ascending: true }),
     ])
+    const seqCfgs = loadSeqConfigs(tournament.id)
+    const cfgArg  = seqCfgs.length > 0 ? seqCfgs : null
     const { generateElementsJSON, generateSequencesJSON } = await import('../../lib/generator')
     if (type === 'elements') {
       downloadJSON(generateElementsJSON(uploads || [], lpgaAds || [], settings), `${tournament.name}-elements.json`)
     } else if (type === 'sequences') {
-      downloadJSON(generateSequencesJSON(uploads || [], lpgaAds || [], settings), `${tournament.name}-sequences.json`)
+      downloadJSON(generateSequencesJSON(uploads || [], lpgaAds || [], settings, cfgArg), `${tournament.name}-sequences.json`)
     } else {
       downloadJSON(generateElementsJSON(uploads || [], lpgaAds || [], settings), `${tournament.name}-elements.json`)
-      setTimeout(() => downloadJSON(generateSequencesJSON(uploads || [], lpgaAds || [], settings), `${tournament.name}-sequences.json`), 400)
+      setTimeout(() => downloadJSON(generateSequencesJSON(uploads || [], lpgaAds || [], settings, cfgArg), `${tournament.name}-sequences.json`), 400)
     }
 
     // Log the export
@@ -296,9 +422,10 @@ export default function Admin() {
       supabase.from('uploads').select('*').eq('tournament_id', tournament.id),
       supabase.from('lpga_ads').select('*').neq('is_active', false).order('assigned_name', { ascending: true }),
     ])
+    const seqCfgs = loadSeqConfigs(tournament.id)
     const { generateElementsJSON, generateSequencesJSON } = await import('../../lib/generator')
     const elements  = generateElementsJSON(uploads || [], lpgaAds || [], settings)
-    const sequences = generateSequencesJSON(uploads || [], lpgaAds || [], settings)
+    const sequences = generateSequencesJSON(uploads || [], lpgaAds || [], settings, seqCfgs.length ? seqCfgs : null)
     setPreview({ tournament, elements, sequences, tab: 'elements' })
     setPreviewLoading(false)
   }
@@ -725,6 +852,9 @@ export default function Admin() {
                     {exporting === `${t.id}-both` ? '…' : '⬇ Export Both'}
                   </button>
                 </div>
+                <button className={styles.btnSeqBuilder} onClick={() => openSeqBuilder(t)}>
+                  {(() => { const n = loadSeqConfigs(t.id).length; return n > 0 ? `📋 Sequences (${n})` : '📋 Build Sequences' })()}
+                </button>
                 <button
                   className={styles.btnViewFiles}
                   onClick={() => toggleExpand(t.id, t.uploads)}
@@ -839,6 +969,166 @@ export default function Admin() {
         </div>
 
       </div>
+
+      {/* Sequence Builder Modal */}
+      {seqBuilderOpen && (
+        <div className={styles.modalOverlay} onClick={e => e.target === e.currentTarget && setSeqBuilderOpen(false)}>
+          <div className={styles.modal} style={{ maxWidth: 760, width: '96vw' }}>
+            <div className={styles.modalHeader}>
+              <div>
+                <div className={styles.modalTitle}>📋 Sequence Builder — {seqBuilderTourn?.name}</div>
+                <div className={styles.modalSub}>Create multiple named Main Content sequences, each with its own ad selection and system elements. Right Rail, Header, and Ticker are auto-generated and unaffected.</div>
+              </div>
+              <button className={styles.modalClose} onClick={() => setSeqBuilderOpen(false)}>×</button>
+            </div>
+
+            <div className={styles.seqBuilderBody}>
+              {seqBuilderLoading ? (
+                <div className={styles.seqBuilderLoading}><div className={styles.spinner} /> Loading…</div>
+              ) : (
+                <>
+                  {seqBuilderConfigs.length === 0 && (
+                    <div className={styles.seqBuilderEmpty}>No sequences yet. Click "+ Add Sequence" below to get started.</div>
+                  )}
+
+                  {seqBuilderConfigs.map((cfg, cfgIdx) => {
+                    const isExpanded = seqExpandedIds.has(cfg.id)
+                    const tournMcAds = (seqBuilderTourn?.uploads || []).filter(u => u.sequence_type === 'MainContent')
+                    return (
+                      <div key={cfg.id} className={styles.seqCard}>
+                        {/* Sequence card header */}
+                        <div className={styles.seqCardHeader}>
+                          <button className={styles.seqExpandBtn} onClick={() => toggleSeqExpand(cfg.id)}>
+                            {isExpanded ? '▼' : '▶'}
+                          </button>
+                          <input
+                            className={styles.seqNameInput}
+                            value={cfg.name}
+                            onChange={e => updateSeqName(cfg.id, e.target.value)}
+                            placeholder="Sequence name"
+                          />
+                          <span className={styles.seqCardMeta}>
+                            {cfg.tournamentAdNames.length} tourn · {cfg.lpgaAdNames.length} LPGA
+                          </span>
+                          <button className={styles.seqDeleteBtn} onClick={() => deleteSeqConfig(cfg.id)} title="Remove this sequence">✕</button>
+                        </div>
+
+                        {isExpanded && (
+                          <div className={styles.seqCardBody}>
+
+                            {/* Tournament MC Ads */}
+                            <div className={styles.seqSection}>
+                              <div className={styles.seqSectionHeader}>
+                                <span className={styles.seqSectionTitle}>Tournament Ads</span>
+                                <button className={styles.seqSelectAllBtn} onClick={() => selectAllTournAds(cfg.id)}>All</button>
+                                <button className={styles.seqSelectAllBtn} onClick={() => setSeqBuilderConfigs(prev => prev.map(c => c.id === cfg.id ? { ...c, tournamentAdNames: [] } : c))}>None</button>
+                              </div>
+                              {tournMcAds.length === 0 ? (
+                                <div className={styles.seqNoAds}>No Main Content ads uploaded yet for this tournament.</div>
+                              ) : (
+                                <div className={styles.seqAdGrid}>
+                                  {tournMcAds.map(u => (
+                                    <label key={u.id} className={`${styles.seqAdItem} ${cfg.tournamentAdNames.includes(u.assigned_name) ? styles.seqAdItemOn : ''}`}>
+                                      <input
+                                        type="checkbox"
+                                        checked={cfg.tournamentAdNames.includes(u.assigned_name)}
+                                        onChange={() => toggleTournAd(cfg.id, u.assigned_name)}
+                                      />
+                                      <span className={styles.seqAdName}>{u.assigned_name}</span>
+                                      {u.is_video && <span className={styles.seqAdBadge}>VID</span>}
+                                    </label>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+
+                            {/* LPGA MC Ads */}
+                            <div className={styles.seqSection}>
+                              <div className={styles.seqSectionHeader}>
+                                <span className={styles.seqSectionTitle}>LPGA Ads</span>
+                                <button className={styles.seqSelectAllBtn} onClick={() => selectAllLpgaAds(cfg.id)}>All</button>
+                                <button className={styles.seqSelectAllBtn} onClick={() => setSeqBuilderConfigs(prev => prev.map(c => c.id === cfg.id ? { ...c, lpgaAdNames: [] } : c))}>None</button>
+                              </div>
+                              {seqBuilderLpgaAds.length === 0 ? (
+                                <div className={styles.seqNoAds}>No active LPGA Main Content ads.</div>
+                              ) : (
+                                <div className={styles.seqAdGrid}>
+                                  {seqBuilderLpgaAds.map(a => (
+                                    <label key={a.id} className={`${styles.seqAdItem} ${cfg.lpgaAdNames.includes(a.assigned_name) ? styles.seqAdItemOn : ''}`}>
+                                      <input
+                                        type="checkbox"
+                                        checked={cfg.lpgaAdNames.includes(a.assigned_name)}
+                                        onChange={() => toggleLpgaAd(cfg.id, a.assigned_name)}
+                                      />
+                                      <span className={styles.seqAdName}>{a.assigned_name}</span>
+                                      {a.is_video && <span className={styles.seqAdBadge}>VID</span>}
+                                    </label>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+
+                            {/* System Elements */}
+                            <div className={styles.seqSection}>
+                              <div className={styles.seqSectionHeader}>
+                                <span className={styles.seqSectionTitle}>System Elements</span>
+                              </div>
+                              <div className={styles.seqSysGrid}>
+                                {SYSTEM_ELEMENT_INFO.map(el => {
+                                  const elCfg = cfg.systemElements?.[el.key] || {}
+                                  return (
+                                    <div key={el.key} className={`${styles.seqSysRow} ${elCfg.enabled ? styles.seqSysRowOn : ''}`}>
+                                      <label className={styles.seqSysCheck}>
+                                        <input
+                                          type="checkbox"
+                                          checked={!!elCfg.enabled}
+                                          onChange={e => updateSeqSysEl(cfg.id, el.key, 'enabled', e.target.checked)}
+                                        />
+                                        <span>{el.label}</span>
+                                      </label>
+                                      <input
+                                        type="number"
+                                        min="1"
+                                        max="300"
+                                        value={elCfg.duration ?? ''}
+                                        onChange={e => updateSeqSysEl(cfg.id, el.key, 'duration', e.target.value)}
+                                        disabled={!elCfg.enabled}
+                                        className={styles.seqSysDur}
+                                        title="Duration in seconds"
+                                      />
+                                      <span className={styles.seqSysDurLabel}>s</span>
+                                    </div>
+                                  )
+                                })}
+                              </div>
+                            </div>
+
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+
+                  <button className={styles.seqAddBtn} onClick={addSeqConfig}>+ Add Sequence</button>
+                </>
+              )}
+            </div>
+
+            <div className={styles.modalFooter}>
+              <span className={styles.modalFooterNote}>
+                {seqBuilderConfigs.length} sequence{seqBuilderConfigs.length !== 1 ? 's' : ''} configured · saved per tournament in your browser
+              </span>
+              <button className={styles.btnGhost} onClick={() => setSeqBuilderOpen(false)}>Cancel</button>
+              {seqBuilderConfigs.length === 0 && (
+                <button className={styles.btnGhost} onClick={() => { clearSeqConfigs(seqBuilderTourn?.id); setSeqBuilderOpen(false) }}>
+                  Use Default
+                </button>
+              )}
+              <button className={styles.btnAccent} onClick={saveSeqBuilderConfigs}>Save Sequences</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Settings Modal */}
       {settingsOpen && (

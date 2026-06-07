@@ -26,8 +26,12 @@ export default async function handler(req, res) {
     const { name, notes, deadline } = req.body || {}
     if (!name?.trim()) return res.status(400).json({ error: 'Tournament name is required' })
 
+    const rawName = name.trim()
+    const slug    = rawName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9\-]/g, '')
+
     const insertData = {
-      name:         name.trim(),
+      name:         rawName,
+      slug:         slug || `tourn-${Date.now()}`,
       notes:        (notes || '').trim(),
       upload_token: generateToken(),
     }

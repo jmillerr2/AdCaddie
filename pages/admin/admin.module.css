@@ -1020,6 +1020,236 @@
 .activityFile  { font-family: 'DM Mono', monospace; font-size: 12px; }
 .activityMeta  { font-size: 11px; color: var(--muted); }
 
+/* ── SEQUENCE BUILDER BUTTON ── */
+.btnSeqBuilder {
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid #0369a1;
+  border-radius: var(--radius);
+  background: #eff6ff;
+  color: #0369a1;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: 'Inter', sans-serif;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s;
+}
+.btnSeqBuilder:hover { background: #dbeafe; }
+
+/* ── SEQUENCE BUILDER MODAL ── */
+.seqBuilderBody {
+  padding: 1rem 1.5rem;
+  max-height: 65vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.seqBuilderLoading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--muted);
+  font-size: 13px;
+  padding: 1rem 0;
+}
+.seqBuilderEmpty {
+  text-align: center;
+  color: var(--muted);
+  font-size: 13px;
+  padding: 2rem 0;
+}
+.seqCard {
+  border: 1px solid var(--border2);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.seqCardHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  background: var(--surface2);
+  border-bottom: 1px solid var(--border);
+}
+.seqExpandBtn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 11px;
+  padding: 0 4px;
+  flex-shrink: 0;
+}
+.seqNameInput {
+  flex: 1;
+  height: 30px;
+  border: 1px solid var(--border2);
+  border-radius: var(--radius);
+  padding: 0 10px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: 'Inter', sans-serif;
+  background: var(--surface);
+  color: var(--text);
+  outline: none;
+  min-width: 0;
+}
+.seqNameInput:focus { border-color: var(--accent); }
+.seqCardMeta {
+  font-size: 11px;
+  color: var(--muted);
+  font-family: 'DM Mono', monospace;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.seqDeleteBtn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 14px;
+  padding: 0 4px;
+  flex-shrink: 0;
+  transition: color 0.15s;
+}
+.seqDeleteBtn:hover { color: var(--danger); }
+.seqCardBody {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.seqSection {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+}
+.seqSection:last-child { border-bottom: none; }
+.seqSectionHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.seqSectionTitle {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  font-family: 'DM Mono', monospace;
+  flex: 1;
+}
+.seqSelectAllBtn {
+  font-size: 11px;
+  padding: 2px 8px;
+  border: 1px solid var(--border2);
+  border-radius: 4px;
+  background: var(--surface2);
+  color: var(--muted);
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+}
+.seqSelectAllBtn:hover { background: var(--border2); color: var(--text); }
+.seqNoAds {
+  font-size: 12px;
+  color: var(--muted);
+  font-style: italic;
+}
+.seqAdGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.seqAdItem {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border: 1px solid var(--border2);
+  border-radius: var(--radius);
+  background: var(--surface2);
+  cursor: pointer;
+  font-size: 12px;
+  font-family: 'DM Mono', monospace;
+  color: var(--text);
+  transition: all 0.12s;
+  user-select: none;
+}
+.seqAdItem:hover { border-color: var(--accent); }
+.seqAdItemOn {
+  background: #f0fdf4;
+  border-color: #1a5c3a;
+  color: #1a5c3a;
+}
+.seqAdItem input[type="checkbox"] { accent-color: #1a5c3a; margin: 0; }
+.seqAdName { font-size: 12px; }
+.seqAdBadge {
+  font-size: 9px;
+  background: #0369a1;
+  color: #fff;
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+.seqSysGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px;
+}
+.seqSysRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border: 1px solid var(--border2);
+  border-radius: var(--radius);
+  background: var(--surface2);
+  transition: all 0.12s;
+}
+.seqSysRowOn { background: #eff6ff; border-color: #0369a1; }
+.seqSysCheck {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text);
+}
+.seqSysCheck input[type="checkbox"] { accent-color: #0369a1; margin: 0; }
+.seqSysDur {
+  width: 48px;
+  height: 26px;
+  border: 1px solid var(--border2);
+  border-radius: 4px;
+  padding: 0 6px;
+  font-size: 12px;
+  font-family: 'DM Mono', monospace;
+  background: var(--surface);
+  color: var(--text);
+  outline: none;
+  text-align: right;
+}
+.seqSysDur:disabled { opacity: 0.35; cursor: not-allowed; }
+.seqSysDurLabel { font-size: 11px; color: var(--muted); flex-shrink: 0; }
+.seqAddBtn {
+  margin-top: 4px;
+  height: 36px;
+  border: 1px dashed var(--border2);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 600;
+  font-family: 'Inter', sans-serif;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.seqAddBtn:hover { border-color: var(--accent); background: var(--surface2); }
+
 /* ── LOAD ERROR BANNER ── */
 .loadErrorBanner {
   display: flex;
