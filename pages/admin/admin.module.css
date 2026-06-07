@@ -1040,7 +1040,8 @@
 /* ── SEQUENCE BUILDER MODAL ── */
 .seqBuilderBody {
   padding: 1rem 1.5rem;
-  max-height: 65vh;
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
