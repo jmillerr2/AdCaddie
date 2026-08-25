@@ -623,6 +623,28 @@
   transition: box-shadow 0.15s, border-color 0.15s;
 }
 .fileGalleryCard:hover { box-shadow: var(--shadow); }
+.fileGalleryCardDragOver {
+  box-shadow: 0 0 0 2px var(--accent2);
+  background: var(--surface2);
+}
+.fileDragHandle {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  z-index: 1;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  background: rgba(255,255,255,0.85);
+  color: var(--muted);
+  font-size: 13px;
+  cursor: grab;
+  line-height: 1;
+}
+.fileDragHandle:active { cursor: grabbing; }
 .fileGalleryThumb {
   width: 100%;
   aspect-ratio: 16/9;

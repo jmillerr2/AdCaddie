@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import { supabase } from '../../lib/supabase'
 import styles from './admin.module.css'
@@ -23,6 +23,15 @@ const SLOTS = [
   { type: 'Header',      label: 'Header',        short: 'H',  color: '#b45309', dim: '1280×120' },
   { type: 'Ticker',      label: 'Ticker',        short: 'T',  color: '#7c3aed', dim: '1280×60' },
 ]
+
+// Same ordering rule as lib/generator.js's bySortOrder — manual drag order first,
+// falling back to assigned_name for anything not yet manually reordered.
+function bySortOrder(a, b) {
+  const ao = a.sort_order ?? Infinity
+  const bo = b.sort_order ?? Infinity
+  if (ao !== bo) return ao - bo
+  return a.assigned_name.localeCompare(b.assigned_name)
+}
 
 function getStatus(uploads, isComplete) {
   if (isComplete) return 'complete'
@@ -115,6 +124,8 @@ export default function Admin() {
   const [settings, setSettings] = useState(DEFAULT_SETTINGS)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [settingsDraft, setSettingsDraft] = useState(DEFAULT_SETTINGS)
+  const [dragOverCard, setDragOverCard] = useState(null) // `${tournId}:${sequenceType}:${index}`
+  const dragUploadRef = useRef(null)
 
   useEffect(() => {
     const saved = sessionStorage.getItem('ac_admin')
@@ -151,7 +162,7 @@ export default function Admin() {
     setLoadError('')
     const { data, error } = await supabase
       .from('tournaments')
-      .select(`*, uploads(id, sequence_type, assigned_name, is_video, original_filename, file_url, width, height, size_bytes, is_late, created_at)`)
+      .select(`*, uploads(id, sequence_type, assigned_name, is_video, original_filename, file_url, width, height, size_bytes, is_late, sort_order, created_at)`)
       .order('created_at', { ascending: false })
     if (error) {
       setLoadError(`Supabase connection error: ${error.message} — check that your project is not paused at app.supabase.com`)
@@ -516,6 +527,25 @@ export default function Admin() {
     setSelectedFiles(prev => ({ ...prev, [tournId]: new Set() }))
   }
 
+  // Reorders ads within one slot (drag-and-drop) without touching assigned_name —
+  // persists the new play order to a separate sort_order column.
+  function reorderUploads(tournamentId, sequenceType, fromIndex, toIndex) {
+    if (fromIndex === toIndex) return
+    setTournaments(prev => prev.map(t => {
+      if (t.id !== tournamentId) return t
+      const slot = (t.uploads || []).filter(u => u.sequence_type === sequenceType).sort(bySortOrder)
+      const rest = (t.uploads || []).filter(u => u.sequence_type !== sequenceType)
+      const reordered = [...slot]
+      const [moved] = reordered.splice(fromIndex, 1)
+      reordered.splice(toIndex, 0, moved)
+      const withOrder = reordered.map((u, i) => ({ ...u, sort_order: i }))
+      Promise.all(
+        withOrder.map(u => supabase.from('uploads').update({ sort_order: u.sort_order }).eq('id', u.id))
+      ).then(() => {})
+      return { ...t, uploads: [...rest, ...withOrder] }
+    }))
+  }
+
   function toggleExpand(id, uploads) {
     setExpanded(prev => {
       const willOpen = !prev[id]
@@ -803,7 +833,7 @@ export default function Admin() {
                     </div>
                   )}
                   {SLOTS.map(s => {
-                    const slotUps = (t.uploads || []).filter(u => u.sequence_type === s.type)
+                    const slotUps = (t.uploads || []).filter(u => u.sequence_type === s.type).sort(bySortOrder)
                     if (slotUps.length === 0) return null
                     return (
                       <div key={s.type} className={styles.fileGallerySlot}>
@@ -811,17 +841,45 @@ export default function Admin() {
                           <span style={{ color: s.color }}>{s.label}</span>
                           <span className={styles.fileGroupDim}>{s.dim}</span>
                           <span className={styles.fileGroupDim}>· {slotUps.length} file{slotUps.length !== 1 ? 's' : ''}</span>
+                          {slotUps.length > 1 && <span className={styles.fileGroupDim}>· drag ⠿ to reorder playback</span>}
                         </div>
                         <div className={styles.fileGalleryGrid}>
-                          {slotUps.map(u => {
+                          {slotUps.map((u, idx) => {
                             const isSel = selSet.has(u.id)
+                            const dragKey = `${t.id}:${s.type}:${idx}`
                             return (
                               <div
                                 key={u.id}
-                                className={`${styles.fileGalleryCard} ${isSel ? styles.fileGalleryCardSelected : ''}`}
+                                className={`${styles.fileGalleryCard} ${isSel ? styles.fileGalleryCardSelected : ''} ${dragOverCard === dragKey ? styles.fileGalleryCardDragOver : ''}`}
                                 style={{ borderColor: isSel ? s.color : s.color + '40' }}
                                 onClick={() => toggleFileSelect(t.id, u.id)}
+                                onDragOver={e => e.preventDefault()}
+                                onDragEnter={() => setDragOverCard(dragKey)}
+                                onDragLeave={() => setDragOverCard(prev => (prev === dragKey ? null : prev))}
+                                onDrop={e => {
+                                  e.preventDefault()
+                                  setDragOverCard(null)
+                                  const drag = dragUploadRef.current
+                                  if (!drag || drag.tournamentId !== t.id || drag.sequenceType !== s.type) return
+                                  reorderUploads(t.id, s.type, drag.index, idx)
+                                  dragUploadRef.current = null
+                                }}
                               >
+                                {slotUps.length > 1 && (
+                                  <span
+                                    className={styles.fileDragHandle}
+                                    draggable
+                                    onClick={e => e.stopPropagation()}
+                                    onDragStart={e => {
+                                      dragUploadRef.current = { tournamentId: t.id, sequenceType: s.type, index: idx }
+                                      e.dataTransfer.setData('text/plain', u.id)
+                                      e.dataTransfer.effectAllowed = 'move'
+                                    }}
+                                    title="Drag to reorder"
+                                  >
+                                    ⠿
+                                  </span>
+                                )}
                                 <input
                                   type="checkbox"
                                   className={styles.fileCheckbox}
@@ -1011,7 +1069,7 @@ export default function Admin() {
 
                   {seqBuilderConfigs.map((cfg, cfgIdx) => {
                     const isExpanded = seqExpandedIds.has(cfg.id)
-                    const tournMcAds = (seqBuilderTourn?.uploads || []).filter(u => u.sequence_type === 'MainContent')
+                    const tournMcAds = (seqBuilderTourn?.uploads || []).filter(u => u.sequence_type === 'MainContent').sort(bySortOrder)
                     return (
                       <div key={cfg.id} className={styles.seqCard}>
                         {/* Sequence card header */}
