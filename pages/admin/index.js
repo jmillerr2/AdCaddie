@@ -109,6 +109,7 @@ export default function Admin() {
   const [seqBuilderTourn, setSeqBuilderTourn]   = useState(null)
   const [seqBuilderConfigs, setSeqBuilderConfigs] = useState([])
   const [seqBuilderLpgaAds, setSeqBuilderLpgaAds] = useState([])
+  const [seqBuilderTemplates, setSeqBuilderTemplates] = useState([])
   const [seqBuilderLoading, setSeqBuilderLoading] = useState(false)
   const [seqExpandedIds, setSeqExpandedIds]     = useState(new Set())
   const [settings, setSettings] = useState(DEFAULT_SETTINGS)
@@ -240,6 +241,7 @@ export default function Admin() {
       tournamentAdNames: [],
       lpgaAdNames: [],
       systemElements: JSON.parse(JSON.stringify(DEFAULT_SETTINGS)),
+      templateId: null,
     }
   }
 
@@ -247,15 +249,22 @@ export default function Admin() {
     setSeqBuilderTourn(tournament)
     setSeqBuilderLoading(true)
     setSeqBuilderOpen(true)
-    const { data: lpgaAds } = await supabase
-      .from('lpga_ads')
-      .select('*')
-      .eq('sequence_type', 'MainContent')
-      .neq('is_active', false)
-      .order('assigned_name', { ascending: true })
+    const [{ data: lpgaAds }, { data: templates }] = await Promise.all([
+      supabase
+        .from('lpga_ads')
+        .select('*')
+        .eq('sequence_type', 'MainContent')
+        .neq('is_active', false)
+        .order('assigned_name', { ascending: true }),
+      supabase
+        .from('sequence_templates')
+        .select('*')
+        .order('name', { ascending: true }),
+    ])
     const stored = loadSeqConfigs(tournament.id)
     const configs = stored.length > 0 ? stored : [makeDefaultSeqConfig(1)]
     setSeqBuilderLpgaAds(lpgaAds || [])
+    setSeqBuilderTemplates(templates || [])
     setSeqBuilderConfigs(configs)
     setSeqExpandedIds(new Set(configs.map(c => c.id)))
     setSeqBuilderLoading(false)
@@ -315,6 +324,10 @@ export default function Admin() {
   function selectAllLpgaAds(configId) {
     const allNames = seqBuilderLpgaAds.map(a => a.assigned_name)
     setSeqBuilderConfigs(prev => prev.map(c => c.id === configId ? { ...c, lpgaAdNames: allNames } : c))
+  }
+
+  function updateSeqTemplate(configId, templateId) {
+    setSeqBuilderConfigs(prev => prev.map(c => c.id === configId ? { ...c, templateId: templateId || null } : c))
   }
 
   function updateSeqSysEl(configId, key, field, value) {
@@ -378,20 +391,22 @@ export default function Admin() {
 
   async function exportJSON(tournament, type) {
     setExporting(`${tournament.id}-${type}`)
-    const [{ data: uploads }, { data: lpgaAds }] = await Promise.all([
+    const [{ data: uploads }, { data: lpgaAds }, { data: templates }] = await Promise.all([
       supabase.from('uploads').select('*').eq('tournament_id', tournament.id),
       supabase.from('lpga_ads').select('*').neq('is_active', false).order('assigned_name', { ascending: true }),
+      supabase.from('sequence_templates').select('*'),
     ])
     const seqCfgs = loadSeqConfigs(tournament.id)
     const cfgArg  = seqCfgs.length > 0 ? seqCfgs : null
+    const templatesById = Object.fromEntries((templates || []).map(t => [t.id, t]))
     const { generateElementsJSON, generateSequencesJSON } = await import('../../lib/generator')
     if (type === 'elements') {
       downloadJSON(generateElementsJSON(uploads || [], lpgaAds || [], settings), `${tournament.name}-elements.json`)
     } else if (type === 'sequences') {
-      downloadJSON(generateSequencesJSON(uploads || [], lpgaAds || [], settings, cfgArg), `${tournament.name}-sequences.json`)
+      downloadJSON(generateSequencesJSON(uploads || [], lpgaAds || [], settings, cfgArg, templatesById), `${tournament.name}-sequences.json`)
     } else {
       downloadJSON(generateElementsJSON(uploads || [], lpgaAds || [], settings), `${tournament.name}-elements.json`)
-      setTimeout(() => downloadJSON(generateSequencesJSON(uploads || [], lpgaAds || [], settings, cfgArg), `${tournament.name}-sequences.json`), 400)
+      setTimeout(() => downloadJSON(generateSequencesJSON(uploads || [], lpgaAds || [], settings, cfgArg, templatesById), `${tournament.name}-sequences.json`), 400)
     }
 
     // Log the export
@@ -418,14 +433,16 @@ export default function Admin() {
 
   async function openPreview(tournament) {
     setPreviewLoading(true)
-    const [{ data: uploads }, { data: lpgaAds }] = await Promise.all([
+    const [{ data: uploads }, { data: lpgaAds }, { data: templates }] = await Promise.all([
       supabase.from('uploads').select('*').eq('tournament_id', tournament.id),
       supabase.from('lpga_ads').select('*').neq('is_active', false).order('assigned_name', { ascending: true }),
+      supabase.from('sequence_templates').select('*'),
     ])
     const seqCfgs = loadSeqConfigs(tournament.id)
+    const templatesById = Object.fromEntries((templates || []).map(t => [t.id, t]))
     const { generateElementsJSON, generateSequencesJSON } = await import('../../lib/generator')
     const elements  = generateElementsJSON(uploads || [], lpgaAds || [], settings)
-    const sequences = generateSequencesJSON(uploads || [], lpgaAds || [], settings, seqCfgs.length ? seqCfgs : null)
+    const sequences = generateSequencesJSON(uploads || [], lpgaAds || [], settings, seqCfgs.length ? seqCfgs : null, templatesById)
     setPreview({ tournament, elements, sequences, tab: 'elements' })
     setPreviewLoading(false)
   }
@@ -563,6 +580,7 @@ export default function Admin() {
         </div>
         <div className={styles.headerRight}>
           <Link href="/admin/lpga" className={styles.headerLink}>🏌️ LPGA Ads</Link>
+          <Link href="/admin/templates" className={styles.headerLink}>🧩 Templates</Link>
           <button className={styles.headerLink} onClick={openSettings} title="Sequence settings">⚙ Sequence Settings</button>
           <button className={styles.refreshBtn} onClick={() => { loadTournaments(); loadActivityLog() }} title="Refresh data">↻</button>
           <button className={styles.logoutBtn} onClick={() => { sessionStorage.removeItem('ac_admin'); setAuthed(false) }}>
@@ -1015,6 +1033,26 @@ export default function Admin() {
 
                         {isExpanded && (
                           <div className={styles.seqCardBody}>
+
+                            {/* Rotation Template */}
+                            <div className={styles.seqSection}>
+                              <div className={styles.seqSectionHeader}>
+                                <span className={styles.seqSectionTitle}>Rotation Template</span>
+                              </div>
+                              <select
+                                className={styles.seqTemplateSelect}
+                                value={cfg.templateId || ''}
+                                onChange={e => updateSeqTemplate(cfg.id, e.target.value)}
+                              >
+                                <option value="">Default pattern (Tournament × 2 · LPGA · alternating Scorecards/Next On Green)</option>
+                                {seqBuilderTemplates.map(t => (
+                                  <option key={t.id} value={t.id}>{t.name}</option>
+                                ))}
+                              </select>
+                              {seqBuilderTemplates.length === 0 && (
+                                <div className={styles.seqNoAds}>No saved templates yet — build one on the <Link href="/admin/templates">Templates</Link> page.</div>
+                              )}
+                            </div>
 
                             {/* Tournament MC Ads */}
                             <div className={styles.seqSection}>
